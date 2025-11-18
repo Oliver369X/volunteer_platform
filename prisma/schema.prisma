@@ -1,0 +1,354 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZATION
+  VOLUNTEER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+  CANCELLED
+}
+
+enum TaskUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+}
+
+enum VolunteerLevel {
+  BRONCE
+  PLATA
+  ORO
+  PLATINO
+}
+
+enum BadgeLevel {
+  BRONCE
+  PLATA
+  ORO
+  PLATINO
+  ESPECIAL
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  COORDINATOR
+  ANALYST
+}
+
+enum PointTransactionType {
+  EARN
+  REDEEM
+  ADJUSTMENT
+}
+
+enum BlockchainStatus {
+  PENDING
+  MINTED
+  FAILED
+}
+
+model User {
+  id          String      @id @default(uuid())
+  fullName    String      @db.VarChar(120)
+  email       String      @unique @db.VarChar(160)
+  passwordHash String     @db.VarChar(120)
+  phoneNumber String?     @db.VarChar(20)
+  role        UserRole    @default(VOLUNTEER)
+  status      UserStatus  @default(ACTIVE)
+  lastLoginAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  volunteerProfile        VolunteerProfile?
+  refreshTokens           RefreshToken[]
+  organizationsCreated    Organization[]
+  organizationMemberships OrganizationMember[]
+  tasksCreated            Task[]
+  volunteerAssignments    Assignment[] @relation("VolunteerAssignments")
+  assignmentsIssued       Assignment[] @relation("AssignmentsIssued")
+  aiRecommendations       AiRecommendation[]
+  auditLogs               AuditLog[]
+
+  @@map("users")
+}
+
+model VolunteerProfile {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  bio             String?
+  baseLocation    String?        @db.VarChar(180)
+  latitude        Decimal?       @db.Decimal(10, 7)
+  longitude       Decimal?       @db.Decimal(10, 7)
+  availability    Json?
+  skills          String[]
+  certifications  String[]
+  transportOptions String[]
+  reputationScore Int            @default(0)
+  totalPoints     Int            @default(0)
+  level           VolunteerLevel @default(BRONCE)
+  experienceHours Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id])
+  pointTransactions PointTransaction[]
+  volunteerBadges  VolunteerBadge[]
+
+  @@map("volunteer_profiles")
+}
+
+model Organization {
+  id                 String    @id @default(uuid())
+  createdByUserId    String
+  name               String    @db.VarChar(150)
+  description        String?
+  sector             String?   @db.VarChar(80)
+  contactEmail       String    @db.VarChar(160)
+  contactPhone       String?   @db.VarChar(25)
+  headquartersLocation String? @db.VarChar(255)
+  coverageAreas      String[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  // Relations
+  creator            User                @relation(fields: [createdByUserId], references: [id])
+  members            OrganizationMember[]
+  tasks              Task[]
+  assignments        Assignment[]
+  aiRecommendations  AiRecommendation[]
+  auditLogs          AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String                @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrganizationMemberRole @default(COORDINATOR)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+model Task {
+  id              String       @id @default(uuid())
+  organizationId  String
+  createdByUserId String
+  title           String       @db.VarChar(180)
+  description     String?
+  status          TaskStatus   @default(PENDING)
+  urgency         TaskUrgency  @default(MEDIUM)
+  category        String?      @db.VarChar(80)
+  skillsRequired  String[]
+  locationName    String?      @db.VarChar(180)
+  latitude        Decimal?     @db.Decimal(10, 7)
+  longitude       Decimal?     @db.Decimal(10, 7)
+  startAt         DateTime?
+  endAt           DateTime?
+  volunteersNeeded Int         @default(1)
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  creator          User              @relation(fields: [createdByUserId], references: [id])
+  assignments      Assignment[]
+  aiRecommendations AiRecommendation[]
+
+  @@map("tasks")
+}
+
+model Assignment {
+  id               String           @id @default(uuid())
+  taskId           String
+  volunteerId      String
+  organizationId   String
+  assignedByUserId String?
+  status           AssignmentStatus @default(PENDING)
+  assignedAt       DateTime         @default(now())
+  respondedAt      DateTime?
+  completedAt      DateTime?
+  verificationNotes String?
+  evidenceUrl      String?          @db.VarChar(255)
+  rating           Int?
+  feedback         String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  task             Task              @relation(fields: [taskId], references: [id])
+  volunteer        User              @relation("VolunteerAssignments", fields: [volunteerId], references: [id])
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  assignedBy       User?             @relation("AssignmentsIssued", fields: [assignedByUserId], references: [id])
+  pointTransactions PointTransaction[]
+  badgesAwarded    VolunteerBadge[]
+
+  @@map("assignments")
+}
+
+model Badge {
+  id          String     @id @default(uuid())
+  code        String     @unique @db.VarChar(80)
+  name        String     @db.VarChar(120)
+  description String?
+  category    String?    @db.VarChar(60)
+  level       BadgeLevel @default(BRONCE)
+  criteria    Json?
+  iconUrl     String?    @db.VarChar(255)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  awards      VolunteerBadge[]
+
+  @@map("badges")
+}
+
+model VolunteerBadge {
+  id               String           @id @default(uuid())
+  volunteerProfileId String
+  badgeId          String
+  assignmentId     String?
+  tokenId          String?          @db.VarChar(160)
+  blockchainStatus BlockchainStatus @default(PENDING)
+  sharedAt         DateTime?
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  volunteerProfile VolunteerProfile @relation(fields: [volunteerProfileId], references: [id])
+  badge            Badge            @relation(fields: [badgeId], references: [id])
+  assignment       Assignment?      @relation(fields: [assignmentId], references: [id])
+
+  @@map("volunteer_badges")
+}
+
+model PointTransaction {
+  id                String              @id @default(uuid())
+  volunteerProfileId String
+  assignmentId      String?
+  type              PointTransactionType
+  points            Int
+  description       String?             @db.VarChar(255)
+  referenceType     String?             @db.VarChar(60)
+  referenceId       String?
+  metadata          Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+
+  // Relations
+  volunteerProfile  VolunteerProfile    @relation(fields: [volunteerProfileId], references: [id])
+  assignment        Assignment?         @relation(fields: [assignmentId], references: [id])
+
+  @@map("point_transactions")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+model AiRecommendation {
+  id              String   @id @default(uuid())
+  taskId          String?
+  volunteerId     String?
+  organizationId  String?
+  requestContext  Json?
+  responsePayload Json?
+  confidenceScore Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  task            Task?         @relation(fields: [taskId], references: [id])
+  volunteer       User?         @relation(fields: [volunteerId], references: [id])
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("ai_recommendations")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  organizationId String?
+  action       String   @db.VarChar(120)
+  actorType    String?  @db.VarChar(60)
+  actorId      String?
+  entityType   String?  @db.VarChar(60)
+  entityId     String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  actor        User?        @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}

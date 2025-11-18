@@ -1,0 +1,672 @@
+{
+  "info": {
+    "name": "Volunteer Intelligence Platform API",
+    "description": "Colección completa de endpoints para la plataforma de asignación inteligente de voluntarios",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "volunteer-platform"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "volunteerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organizationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "assignmentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Verificar que la API está funcionando"
+      },
+      "response": []
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Volunteer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success') {",
+                  "    pm.collectionVariables.set('accessToken', response.data.tokens.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.data.tokens.refreshToken);",
+                  "    pm.collectionVariables.set('volunteerId', response.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"juan.perez@example.com\",\n  \"password\": \"Password123!\",\n  \"phoneNumber\": \"+59178901234\",\n  \"bio\": \"Voluntario con experiencia en primeros auxilios\",\n  \"baseLocation\": \"Santa Cruz, Bolivia\",\n  \"latitude\": -17.783327,\n  \"longitude\": -63.182076,\n  \"skills\": [\"first-aid\", \"communication\", \"logistics\"],\n  \"certifications\": [\"CPR\", \"First Aid Basic\"],\n  \"transportOptions\": [\"car\", \"motorcycle\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/volunteer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "volunteer"]
+            }
+          }
+        },
+        {
+          "name": "Register Organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success') {",
+                  "    pm.collectionVariables.set('accessToken', response.data.tokens.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.data.tokens.refreshToken);",
+                  "    pm.collectionVariables.set('organizationId', response.data.organization.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"María González\",\n  \"email\": \"maria.gonzalez@ong.org\",\n  \"password\": \"Password123!\",\n  \"phoneNumber\": \"+59178905678\",\n  \"organization\": {\n    \"name\": \"Cruz Roja Boliviana\",\n    \"description\": \"Organización humanitaria dedicada a la ayuda en emergencias\",\n    \"sector\": \"Healthcare\",\n    \"headquartersLocation\": \"La Paz, Bolivia\",\n    \"coverageAreas\": [\"La Paz\", \"Cochabamba\", \"Santa Cruz\"]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register/organization",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register", "organization"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success') {",
+                  "    pm.collectionVariables.set('accessToken', response.data.tokens.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.data.tokens.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan.perez@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success') {",
+                  "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Carlos Pérez\",\n  \"phoneNumber\": \"+59178901111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Volunteer Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Voluntario experimentado en gestión de emergencias\",\n  \"skills\": [\"first-aid\", \"communication\", \"logistics\", \"coordination\"],\n  \"baseLocation\": \"Santa Cruz Centro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/volunteer-profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me", "volunteer-profile"]
+            }
+          }
+        },
+        {
+          "name": "List Volunteers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/volunteers?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "volunteers"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "level",
+                  "value": "PLATA",
+                  "disabled": true
+                },
+                {
+                  "key": "skills",
+                  "value": "first-aid",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "List Organizations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "organizations"]
+            }
+          }
+        },
+        {
+          "name": "Get Organization Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations/{{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "organizations", "{{organizationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Add Organization Member",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"coordinator@ong.org\",\n  \"role\": \"COORDINATOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations/{{organizationId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "organizations", "{{organizationId}}", "members"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success') {",
+                  "    pm.collectionVariables.set('taskId', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"title\": \"Distribución de alimentos en zona afectada\",\n  \"description\": \"Se necesita apoyo para distribuir alimentos en comunidades afectadas por inundaciones\",\n  \"urgency\": \"HIGH\",\n  \"category\": \"Logistics\",\n  \"skillsRequired\": [\"logistics\", \"communication\"],\n  \"locationName\": \"Villa Tunari, Cochabamba\",\n  \"latitude\": -16.9833,\n  \"longitude\": -65.4167,\n  \"volunteersNeeded\": 5,\n  \"startAt\": \"2024-12-20T08:00:00Z\",\n  \"endAt\": \"2024-12-20T18:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks?status=PENDING&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "urgency",
+                  "value": "HIGH",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Distribución de alimentos - URGENTE\",\n  \"volunteersNeeded\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matching",
+      "item": [
+        {
+          "name": "Run Matching (Recommendations Only)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"autoAssign\": false,\n  \"limit\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/tasks/{{taskId}}/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "tasks", "{{taskId}}", "run"]
+            },
+            "description": "Ejecuta el algoritmo de matching con IA y heurísticas"
+          }
+        },
+        {
+          "name": "Run Matching (Auto-Assign)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.status === 'success' && response.data.autoAssigned && response.data.autoAssigned.length > 0) {",
+                  "    pm.collectionVariables.set('assignmentId', response.data.autoAssigned[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"autoAssign\": true,\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/tasks/{{taskId}}/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "tasks", "{{taskId}}", "run"]
+            },
+            "description": "Ejecuta matching y auto-asigna voluntarios"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gamification",
+      "item": [
+        {
+          "name": "Complete Assignment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pointsAwarded\": 150,\n  \"rating\": 5,\n  \"feedback\": \"Excelente trabajo, muy profesional y comprometido\",\n  \"badgeCodes\": [\"HERO_BADGE\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/gamification/assignments/{{assignmentId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "gamification", "assignments", "{{assignmentId}}", "complete"]
+            },
+            "description": "Marca asignación como completa, otorga puntos y badges NFT"
+          }
+        },
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gamification/leaderboard?limit=10&timeframe=monthly",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "gamification", "leaderboard"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "timeframe",
+                  "value": "monthly",
+                  "description": "all, weekly, monthly, yearly"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Volunteer Gamification",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gamification/volunteer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "gamification", "volunteer"]
+            },
+            "description": "Obtiene puntos, badges y transacciones del voluntario autenticado"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Organization Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/organization?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "organization"],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2024-12-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Dashboard con KPIs de la organización"
+          }
+        },
+        {
+          "name": "Volunteer KPIs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/volunteer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "volunteer"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2024-12-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "KPIs individuales del voluntario autenticado"
+          }
+        }
+      ]
+    }
+  ]
+}
+

@@ -2,11 +2,11 @@
 Write-Host "Configurando base de datos de test..." -ForegroundColor Cyan
 
 $env:PGPASSWORD = "postgres"
-$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/volunteer_platform_test"
+$env:DATABASE_URL = "postgresql://postgres:071104@localhost:5432/volunteer_platform_dev"
 
 # Crear BD
 Write-Host "Creando base de datos..." -ForegroundColor Yellow
-psql -U postgres -h localhost -c "CREATE DATABASE volunteer_platform_test;" postgres 2>$null
+psql -U postgres -h localhost -c "CREATE DATABASE volunteer_platform_dev;" postgres 2>$null
 
 # Aplicar schema
 Write-Host "Aplicando schema..." -ForegroundColor Yellow

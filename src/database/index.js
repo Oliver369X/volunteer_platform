@@ -12,7 +12,7 @@ const getDatabaseUrl = () => {
     DB_PORT = '5432',
     DB_NAME = 'volunteer_platform_dev',
     DB_USERNAME = 'postgres',
-    DB_PASSWORD = 'postgres',
+    DB_PASSWORD = '071104',
     DATABASE_URL,
   } = process.env;
 

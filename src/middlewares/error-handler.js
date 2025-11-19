@@ -23,6 +23,11 @@ const errorMiddleware = (err, _req, res, _next) => {
 
   if (status >= 500) {
     logger.error('Unhandled error', { error: err });
+    // En desarrollo/test, mostrar error completo
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+      console.error('❌ Error completo:', err);
+      console.error('Stack trace:', err.stack);
+    }
   } else {
     logger.warn('Handled error', { error: err });
   }

@@ -34,7 +34,7 @@ module.exports = {
   development: baseConfig,
   test: {
     ...baseConfig,
-    database: process.env.DB_NAME_TEST || 'volunteer_platform_test',
+    database: process.env.DB_NAME_TEST || 'volunteer_platform_dev',
     logging: false,
   },
   production: {

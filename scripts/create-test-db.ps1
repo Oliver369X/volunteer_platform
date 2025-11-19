@@ -7,12 +7,12 @@ Write-Host ""
 $env:PGPASSWORD = "postgres"
 
 # Intentar crear la base de datos
-$output = psql -U postgres -h localhost -c "CREATE DATABASE volunteer_platform_test;" postgres 2>&1
+$output = psql -U postgres -h localhost -c "CREATE DATABASE volunteer_platform_dev;" postgres 2>&1
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Base de datos 'volunteer_platform_test' creada" -ForegroundColor Green
+    Write-Host "✅ Base de datos 'volunteer_platform_dev' creada" -ForegroundColor Green
 } elseif ($output -match "already exists") {
-    Write-Host "ℹ️  Base de datos 'volunteer_platform_test' ya existe" -ForegroundColor Yellow
+    Write-Host "ℹ️  Base de datos 'volunteer_platform_dev' ya existe" -ForegroundColor Yellow
 } else {
     Write-Host "❌ Error al crear la base de datos" -ForegroundColor Red
     Write-Host $output
@@ -22,7 +22,7 @@ if ($LASTEXITCODE -eq 0) {
 Write-Host ""
 Write-Host "📊 Aplicando schema de Prisma..." -ForegroundColor Cyan
 
-$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/volunteer_platform_test"
+$env:DATABASE_URL = "postgresql://postgres:071104@localhost:5432/volunteer_platform_dev"
 
 npx prisma db push --skip-generate --accept-data-loss
 

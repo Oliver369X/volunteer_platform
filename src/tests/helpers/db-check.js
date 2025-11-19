@@ -12,8 +12,8 @@ const checkDatabaseAvailability = async () => {
   try {
     const databaseUrl =
       process.env.DATABASE_URL_TEST ||
-      process.env.DATABASE_URL?.replace(/volunteer_platform_dev/, 'volunteer_platform_test') ||
-      'postgresql://postgres:postgres@localhost:5432/volunteer_platform_test';
+      process.env.DATABASE_URL?.replace(/volunteer_platform_dev/, 'volunteer_platform_dev') ||
+      'postgresql://postgres:071104@localhost:5432/volunteer_platform_dev';
 
     const prisma = new PrismaClient({
       datasources: {

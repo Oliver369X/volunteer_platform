@@ -5,7 +5,6 @@ const { randomUUID } = require('crypto');
 const createUserData = (overrides = {}) => ({
   fullName: 'Test User',
   email: `test-${randomUUID()}@example.com`,
-  password: 'Test123!@#',
   phoneNumber: '+1234567890',
   role: 'VOLUNTEER',
   status: 'ACTIVE',

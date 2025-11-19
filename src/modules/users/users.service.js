@@ -62,12 +62,14 @@ const listVolunteers = async (requester, filters) => {
     };
   }
 
-  const userWhere = {};
+  // Agregar filtro de búsqueda de usuario si existe
   if (filters.search) {
-    userWhere.OR = [
-      { fullName: { contains: filters.search, mode: 'insensitive' } },
-      { email: { contains: filters.search, mode: 'insensitive' } },
-    ];
+    where.user = {
+      OR: [
+        { fullName: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+      ],
+    };
   }
 
   const volunteers = await prisma.volunteerProfile.findMany({
@@ -80,7 +82,6 @@ const listVolunteers = async (requester, filters) => {
           email: true,
           phoneNumber: true,
         },
-        where: userWhere,
       },
     },
     orderBy: [

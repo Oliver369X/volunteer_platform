@@ -109,19 +109,15 @@ const runMatching = async (taskId, { autoAssign, limit }, requester) => {
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: [
-      {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-          },
+    include: {
+      organization: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-      {
-        assignments: true,
-      },
-    ],
+      assignments: true,
+    },
   });
 
   if (!task) {
@@ -164,15 +160,14 @@ const runMatching = async (taskId, { autoAssign, limit }, requester) => {
           email: true,
           status: true,
         },
-        where: {
-          status: 'ACTIVE',
-        },
       },
     },
   });
 
   const candidateVolunteers = volunteers.filter(
-    (volunteer) => !existingVolunteerIds.has(volunteer.userId),
+    (volunteer) => 
+      !existingVolunteerIds.has(volunteer.userId) && 
+      volunteer.user.status === 'ACTIVE',
   );
 
   const volunteerMap = new Map(

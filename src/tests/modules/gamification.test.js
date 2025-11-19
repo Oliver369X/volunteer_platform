@@ -75,7 +75,7 @@ describe('Gamification Module', () => {
 
     assignment = await prisma.assignment.create({
       data: createAssignmentData(task.id, volunteerUser.id, organization.id, {
-        status: 'COMPLETED',
+        status: 'IN_PROGRESS',
       }),
     });
   });
@@ -159,6 +159,7 @@ describe('Gamification Module', () => {
 
       const response = await request(app)
         .get('/api/gamification/leaderboard?limit=10')
+        .set(getAuthHeader(orgToken))
         .expect(200);
 
       expect(response.body.status).toBe('success');
@@ -174,12 +175,12 @@ describe('Gamification Module', () => {
     });
   });
 
-  describe('GET /api/gamification/volunteer', () => {
+  describe('GET /api/gamification/me', () => {
     it('debería obtener gamificación del voluntario autenticado', async () => {
       const volunteerToken = createTestToken(volunteerUser);
 
       const response = await request(app)
-        .get('/api/gamification/volunteer')
+        .get('/api/gamification/me')
         .set(getAuthHeader(volunteerToken))
         .expect(200);
 

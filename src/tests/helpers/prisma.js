@@ -1,37 +1,35 @@
 'use strict';
 
-const { PrismaClient } = require('@prisma/client');
+const { connectDatabase, getPrisma: getAppPrisma } = require('../../database');
 
 let prisma;
+let isInitialized = false;
 
 const getPrisma = () => {
-  if (!prisma) {
-    let databaseUrl = process.env.DATABASE_URL_TEST;
+  if (!isInitialized) {
+    // Asegurar que DATABASE_URL esté configurado para tests
+    if (!process.env.DATABASE_URL) {
+      const {
+        DB_HOST = 'localhost',
+        DB_PORT = '5432',
+        DB_USERNAME = 'postgres',
+        DB_PASSWORD = '071104',
+      } = process.env;
+      process.env.DATABASE_URL = `postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/volunteer_platform_dev`;
+    }
     
-    if (!databaseUrl) {
-      if (process.env.DATABASE_URL) {
-        databaseUrl = process.env.DATABASE_URL.replace(
-          /volunteer_platform_dev/,
-          'volunteer_platform_test',
-        );
-      } else {
-        const {
-          DB_HOST = 'localhost',
-          DB_PORT = '5432',
-          DB_USERNAME = 'postgres',
-          DB_PASSWORD = 'postgres',
-        } = process.env;
-        databaseUrl = `postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/volunteer_platform_test`;
+    // Conectar usando el método de la aplicación (pero solo una vez)
+    if (!prisma) {
+      try {
+        // Intentar obtener la instancia existente
+        prisma = getAppPrisma();
+      } catch (error) {
+        // Si no existe, crear una nueva conexión
+        // No podemos usar await aquí, así que lanzamos un error
+        throw new Error('Prisma debe ser inicializado en beforeAll usando connectDatabase()');
       }
     }
-
-    // Establecer DATABASE_URL para Prisma
-    process.env.DATABASE_URL = databaseUrl;
-
-    prisma = new PrismaClient({
-      log: process.env.DB_LOGGING === 'true' ? ['error'] : [],
-      errorFormat: 'minimal',
-    });
+    isInitialized = true;
   }
   return prisma;
 };
@@ -77,6 +75,18 @@ const disconnect = async () => {
       // Ignorar errores al desconectar
     }
     prisma = null;
+    isInitialized = false;
+  }
+};
+
+const initializePrisma = async () => {
+  try {
+    prisma = await connectDatabase();
+    isInitialized = true;
+    return prisma;
+  } catch (error) {
+    console.error('Error al inicializar Prisma:', error);
+    throw error;
   }
 };
 
@@ -84,4 +94,6 @@ module.exports = {
   getPrisma,
   cleanup,
   disconnect,
+  initializePrisma,
+  connectDatabase,
 };

@@ -36,6 +36,12 @@ const createTask = async (payload, requester) => {
 
   await ensureOrganizationAccess(prisma, organization.id, requester);
 
+  // Handle metadata with badgeCodes
+  let taskMetadata = payload.metadata || {};
+  if (payload.badgeCodes && Array.isArray(payload.badgeCodes)) {
+    taskMetadata = { ...taskMetadata, badgeCodes: payload.badgeCodes };
+  }
+
   const task = await prisma.task.create({
     data: {
       organizationId: organization.id,
@@ -51,7 +57,7 @@ const createTask = async (payload, requester) => {
       startAt: payload.startAt,
       endAt: payload.endAt,
       volunteersNeeded: payload.volunteersNeeded,
-      metadata: payload.metadata,
+      metadata: taskMetadata,
     },
   });
 
@@ -83,9 +89,27 @@ const updateTask = async (taskId, payload, requester) => {
 
   await ensureOrganizationAccess(prisma, task.organizationId, requester);
 
+  // Handle metadata with badgeCodes
+  let updateData = { ...payload };
+  if (payload.badgeCodes !== undefined) {
+    const currentMetadata = task.metadata || {};
+    const taskMetadata = typeof currentMetadata === 'string' 
+      ? JSON.parse(currentMetadata) 
+      : currentMetadata;
+    
+    if (Array.isArray(payload.badgeCodes)) {
+      updateData.metadata = { ...taskMetadata, badgeCodes: payload.badgeCodes };
+    } else {
+      // Remove badgeCodes if empty array
+      const { badgeCodes, ...restMetadata } = taskMetadata;
+      updateData.metadata = restMetadata;
+    }
+    delete updateData.badgeCodes; // Remove from direct update
+  }
+
   const updated = await prisma.task.update({
     where: { id: taskId },
-    data: payload,
+    data: updateData,
   });
 
   await prisma.auditLog.create({
@@ -260,10 +284,132 @@ const listTasks = async (filters, requester) => {
   return tasks;
 };
 
+// ============================================
+// ASSIGN TASK TO VOLUNTEER - Asignar tarea a voluntario
+// ============================================
+const assignTaskToVolunteer = async (taskId, volunteerId, requester) => {
+  const prisma = getPrisma();
+  const notificationService = require('../../services/notification.service');
+
+  // Verificar que la tarea existe
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: {
+      organization: true,
+      assignments: true,
+    },
+  });
+
+  if (!task) {
+    throw new NotFoundError('Tarea no encontrada');
+  }
+
+  // Verificar permisos
+  await ensureOrganizationAccess(prisma, task.organizationId, requester);
+
+  // Verificar que el voluntario existe y tiene perfil
+  const volunteer = await prisma.user.findUnique({
+    where: { id: volunteerId },
+    include: {
+      volunteerProfile: true,
+    },
+  });
+
+  if (!volunteer || volunteer.role !== 'VOLUNTEER') {
+    throw new NotFoundError('Voluntario no encontrado');
+  }
+
+  if (!volunteer.volunteerProfile) {
+    throw new ValidationError('El usuario no tiene un perfil de voluntario');
+  }
+
+  // Verificar que la tarea está en un estado válido
+  if (!['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(task.status)) {
+    throw new ValidationError('Solo se pueden asignar voluntarios a tareas activas');
+  }
+
+  // Verificar que el voluntario no está ya asignado
+  const existingAssignment = task.assignments.find(
+    (assignment) => assignment.volunteerId === volunteerId && assignment.status !== 'REJECTED',
+  );
+
+  if (existingAssignment) {
+    throw new ValidationError('El voluntario ya está asignado a esta tarea');
+  }
+
+  // Verificar que no se exceda el número de voluntarios necesarios
+  const activeAssignments = task.assignments.filter((assignment) =>
+    ['PENDING', 'ACCEPTED', 'IN_PROGRESS'].includes(assignment.status),
+  );
+
+  if (activeAssignments.length >= task.volunteersNeeded) {
+    throw new ValidationError('Ya se alcanzó el número máximo de voluntarios para esta tarea');
+  }
+
+  // Crear la asignación
+  const assignment = await prisma.assignment.create({
+    data: {
+      taskId: task.id,
+      volunteerId: volunteer.id,
+      organizationId: task.organizationId,
+      assignedByUserId: requester.id,
+      status: 'PENDING',
+    },
+    include: {
+      volunteer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+      task: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  });
+
+  // Notificar al voluntario
+  await notificationService.notifyVolunteerAssignment({
+    volunteer: { id: volunteerId },
+    task,
+  });
+
+  // Actualizar estado de la tarea si es necesario
+  if (task.status === 'PENDING') {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: 'ASSIGNED' },
+    });
+  }
+
+  // Crear log de auditoría
+  await prisma.auditLog.create({
+    data: {
+      organizationId: task.organizationId,
+      action: 'TASK_ASSIGNED',
+      actorType: requester.role,
+      actorId: requester.id,
+      entityType: 'ASSIGNMENT',
+      entityId: assignment.id,
+      metadata: {
+        taskId: task.id,
+        volunteerId: volunteer.id,
+      },
+    },
+  });
+
+  return assignment;
+};
+
 module.exports = {
   createTask,
   updateTask,
   updateTaskStatus,
   getTask,
   listTasks,
+  assignTaskToVolunteer,
 };

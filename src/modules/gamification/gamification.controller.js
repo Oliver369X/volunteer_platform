@@ -90,14 +90,66 @@ const markAsCompleted = async (req, res, next) => {
   }
 };
 
+// ============================================
+// CREATE BADGE - Crear badge NFT
+// ============================================
+const createBadge = async (req, res, next) => {
+  try {
+    const iconFile = req.file ? req.file.buffer : null;
+    const payload = {
+      code: req.body.code,
+      name: req.body.name,
+      description: req.body.description,
+      category: req.body.category,
+      level: req.body.level,
+      criteria: req.body.criteria ? JSON.parse(req.body.criteria) : {},
+    };
+
+    const result = await gamificationService.createBadge(payload, iconFile, req.user);
+    return res.status(201).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ============================================
+// LIST BADGES - Listar todos los badges
+// ============================================
+const listBadges = async (req, res, next) => {
+  try {
+    const result = await gamificationService.listBadges(req.query);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ============================================
+// GET ORGANIZATION COMPLETED ASSIGNMENTS - Ver asignaciones completadas
+// ============================================
+const getOrganizationCompletedAssignments = async (req, res, next) => {
+  try {
+    const result = await gamificationService.getOrganizationCompletedAssignments(
+      req.user,
+      req.query,
+    );
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
   getVolunteerGamification,
   getMyAssignments,
+  getOrganizationCompletedAssignments,
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,
+  createBadge,
+  listBadges,
 };
 
 

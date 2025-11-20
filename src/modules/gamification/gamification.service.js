@@ -12,7 +12,7 @@ const LEVEL_THRESHOLDS = [
   { level: 'PLATINO', minPoints: 5000 },
 ];
 
-const ACTIVE_COMPLETION_STATUSES = ['PENDING', 'ACCEPTED', 'IN_PROGRESS'];
+const ACTIVE_COMPLETION_STATUSES = ['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'];
 
 const getLevelForPoints = (points) => {
   let currentLevel = 'BRONCE';
@@ -45,7 +45,12 @@ const ensureOrgAssignmentAccess = async (prisma, assignment, requester) => {
 const completeAssignment = async (assignmentId, payload, requester) => {
   const prisma = getPrisma();
 
-  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+  const assignment = await prisma.assignment.findUnique({ 
+    where: { id: assignmentId },
+    include: {
+      task: true,
+    },
+  });
   if (!assignment) {
     throw new NotFoundError('Asignación no encontrada');
   }
@@ -64,6 +69,17 @@ const completeAssignment = async (assignmentId, payload, requester) => {
     throw new NotFoundError('Perfil de voluntario no encontrado');
   }
 
+  // Get badge codes from task metadata if not provided in payload
+  let badgeCodesToAward = payload.badgeCodes || [];
+  if (!badgeCodesToAward.length && assignment.task?.metadata) {
+    const taskMetadata = typeof assignment.task.metadata === 'string' 
+      ? JSON.parse(assignment.task.metadata) 
+      : assignment.task.metadata;
+    if (taskMetadata.badgeCodes && Array.isArray(taskMetadata.badgeCodes)) {
+      badgeCodesToAward = taskMetadata.badgeCodes;
+    }
+  }
+
   const totalPoints = volunteerProfile.totalPoints + payload.pointsAwarded;
   const newLevel = getLevelForPoints(totalPoints);
   const newReputation = Math.min(
@@ -72,6 +88,17 @@ const completeAssignment = async (assignmentId, payload, requester) => {
   );
 
   const awardedBadges = [];
+  const logger = require('../../utils/logger');
+
+  // Obtener información completa del voluntario antes de la transacción
+  const volunteer = await prisma.user.findUnique({
+    where: { id: assignment.volunteerId },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+    },
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.assignment.update({
@@ -106,9 +133,9 @@ const completeAssignment = async (assignmentId, payload, requester) => {
       },
     });
 
-    if (payload.badgeCodes?.length) {
+    if (badgeCodesToAward.length) {
       const badges = await tx.badge.findMany({
-        where: { code: { in: payload.badgeCodes } },
+        where: { code: { in: badgeCodesToAward } },
       });
 
       for (const badge of badges) {
@@ -119,11 +146,7 @@ const completeAssignment = async (assignmentId, payload, requester) => {
             assignmentId,
           },
         });
-        await blockchainSimulator.mintBadge({
-          volunteerBadge,
-          badge,
-          volunteer: { id: assignment.volunteerId },
-        });
+        
         awardedBadges.push({
           id: volunteerBadge.id,
           badge: {
@@ -147,11 +170,52 @@ const completeAssignment = async (assignmentId, payload, requester) => {
         metadata: {
           rating: payload.rating,
           pointsAwarded: payload.pointsAwarded,
-          badgeCodes: payload.badgeCodes,
+          badgeCodes: badgeCodesToAward,
         },
       },
     });
   });
+
+  // Mintear badges después de la transacción para evitar conflictos
+  if (badgeCodesToAward.length && awardedBadges.length > 0) {
+    const badges = await prisma.badge.findMany({
+      where: { code: { in: badgeCodesToAward } },
+    });
+
+    const badgeMap = new Map(badges.map((b) => [b.code, b]));
+
+    for (const awardedBadge of awardedBadges) {
+      const badge = badgeMap.get(awardedBadge.badge.code);
+      if (badge) {
+        try {
+          const volunteerBadge = await prisma.volunteerBadge.findUnique({
+            where: { id: awardedBadge.id },
+          });
+          
+          await blockchainSimulator.mintBadge({
+            volunteerBadge,
+            badge,
+            volunteer: volunteer || { id: assignment.volunteerId, fullName: 'Voluntario', email: '' },
+          });
+          
+          // Actualizar el tokenId en awardedBadges
+          const updated = await prisma.volunteerBadge.findUnique({
+            where: { id: awardedBadge.id },
+          });
+          awardedBadge.tokenId = updated.tokenId;
+        } catch (mintError) {
+          // Si falla el minting, continuar pero loguear el error
+          logger.error('Error al mintear badge, continuando sin minting', {
+            error: mintError.message,
+            badgeId: badge.id,
+            volunteerBadgeId: awardedBadge.id,
+            stack: mintError.stack,
+          });
+          // El badge ya está creado, solo no se minteó
+        }
+      }
+    }
+  }
 
   return {
     assignmentId: assignment.id,
@@ -275,7 +339,7 @@ const getVolunteerGamification = async (userId) => {
         badge: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      // No limitar, mostrar todos los badges del voluntario
     }),
   ]);
 
@@ -286,12 +350,24 @@ const getVolunteerGamification = async (userId) => {
       id: award.id,
       tokenId: award.tokenId,
       blockchainStatus: award.blockchainStatus,
+      metadata: award.metadata,
+      earnedAt: award.createdAt,
+      createdAt: award.createdAt,
+      awardedAt: award.createdAt,
       badge: {
+        id: award.badge.id,
         code: award.badge.code,
         name: award.badge.name,
+        description: award.badge.description,
         level: award.badge.level,
+        category: award.badge.category,
+        iconUrl: award.badge.iconUrl,
       },
-      awardedAt: award.createdAt,
+      // También incluir propiedades directas para compatibilidad
+      name: award.badge.name,
+      description: award.badge.description,
+      level: award.badge.level,
+      iconUrl: award.badge.iconUrl,
     })),
   };
 };
@@ -304,6 +380,7 @@ const getMyAssignments = async (userId, filters = {}) => {
 
   const where = {
     volunteerId: userId,
+    deletedAt: null, // Exclude deleted assignments
   };
 
   // Filtro por status
@@ -333,7 +410,7 @@ const getMyAssignments = async (userId, filters = {}) => {
           role: true,
         },
       },
-      assignedByUser: {
+      assignedBy: {  // Changed from assignedByUser to assignedBy
         select: {
           id: true,
           fullName: true,
@@ -342,6 +419,89 @@ const getMyAssignments = async (userId, filters = {}) => {
       },
     },
     orderBy: [
+      { assignedAt: 'desc' },
+    ],
+  });
+
+  return assignments;
+};
+
+// ============================================
+// GET ORGANIZATION COMPLETED ASSIGNMENTS - Ver asignaciones completadas de la organización
+// ============================================
+const getOrganizationCompletedAssignments = async (requester, filters = {}) => {
+  const prisma = getPrisma();
+  const { AuthorizationError } = require('../../core/api-error');
+
+  // Obtener organizaciones del usuario
+  const memberships = await prisma.organizationMember.findMany({
+    where: { userId: requester.id },
+    include: { organization: true },
+  });
+
+  if (requester.role !== 'ADMIN' && memberships.length === 0) {
+    throw new AuthorizationError('No perteneces a ninguna organización');
+  }
+
+  const organizationIds = requester.role === 'ADMIN' 
+    ? undefined 
+    : memberships.map((m) => m.organizationId);
+
+  const where = {
+    organizationId: organizationIds ? { in: organizationIds } : undefined,
+    status: { in: ['COMPLETED', 'VERIFIED'] },
+    deletedAt: null,
+  };
+
+  // Filtro por status específico
+  if (filters.status) {
+    const statuses = filters.status.split(',').map((s) => s.trim());
+    where.status = { in: statuses };
+  }
+
+  // Filtro por organización específica
+  if (filters.organizationId) {
+    // Verificar acceso
+    if (requester.role !== 'ADMIN') {
+      const hasAccess = memberships.some((m) => m.organizationId === filters.organizationId);
+      if (!hasAccess) {
+        throw new AuthorizationError('No tienes acceso a esta organización');
+      }
+    }
+    where.organizationId = filters.organizationId;
+  }
+
+  const assignments = await prisma.assignment.findMany({
+    where,
+    include: {
+      task: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      volunteer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+        },
+      },
+      assignedBy: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: [
+      { completedAt: 'desc' },
       { assignedAt: 'desc' },
     ],
   });
@@ -463,7 +623,8 @@ const rejectAssignment = async (assignmentId, userId, reason = null) => {
  */
 const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes = '') => {
   const prisma = getPrisma();
-  const cloudinaryClient = require('../services/cloudinary-client');
+  const cloudinaryClient = require('../../services/cloudinary-client');
+  const logger = require('../../utils/logger');
 
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId },
@@ -527,12 +688,113 @@ const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes 
   return updated;
 };
 
+// ============================================
+// CREATE BADGE - Crear badge NFT
+// ============================================
+const createBadge = async (payload, iconFile, requester) => {
+  const prisma = getPrisma();
+  const cloudinaryClient = require('../../services/cloudinary-client');
+  const logger = require('../../utils/logger');
+
+  // Verificar que el usuario es organización o admin
+  if (requester.role !== 'ORGANIZATION' && requester.role !== 'ADMIN') {
+    throw new AuthorizationError('Solo las organizaciones pueden crear badges');
+  }
+
+  // Verificar que el código no existe
+  const existingBadge = await prisma.badge.findUnique({
+    where: { code: payload.code },
+  });
+
+  if (existingBadge) {
+    throw new ValidationError('Ya existe un badge con este código');
+  }
+
+  let iconUrl = null;
+
+  // Subir imagen si existe
+  if (iconFile) {
+    try {
+      const result = await cloudinaryClient.uploadImage(iconFile, {
+        folder: 'badges',
+        transformation: [
+          { width: 512, height: 512, crop: 'limit' },
+          { quality: 'auto:good' },
+          { fetch_format: 'auto' },
+        ],
+      });
+      iconUrl = result.url;
+      logger.info('Imagen de badge subida a Cloudinary', { url: iconUrl });
+    } catch (error) {
+      logger.warn('Error al subir imagen de badge', { error: error.message });
+      throw new ValidationError('Error al subir la imagen del badge');
+    }
+  }
+
+  // Crear badge
+  const badge = await prisma.badge.create({
+    data: {
+      code: payload.code,
+      name: payload.name,
+      description: payload.description,
+      category: payload.category,
+      level: payload.level || 'BRONCE',
+      criteria: payload.criteria || {},
+      iconUrl,
+    },
+  });
+
+  logger.info('Badge creado', { badgeId: badge.id, code: badge.code });
+
+  return badge;
+};
+
+// ============================================
+// LIST BADGES - Listar todos los badges
+// ============================================
+const listBadges = async (filters = {}) => {
+  const prisma = getPrisma();
+
+  const where = {
+    deletedAt: null,
+  };
+
+  if (filters.level) {
+    where.level = filters.level;
+  }
+
+  if (filters.category) {
+    where.category = filters.category;
+  }
+
+  if (filters.search) {
+    where.OR = [
+      { name: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+      { code: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
+  const badges = await prisma.badge.findMany({
+    where,
+    orderBy: [
+      { createdAt: 'desc' },
+    ],
+    take: filters.limit || 100,
+  });
+
+  return badges;
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
   getVolunteerGamification,
   getMyAssignments,
+  getOrganizationCompletedAssignments,
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,
+  createBadge,
+  listBadges,
 };

@@ -51,6 +51,12 @@ router.post(
   controller.completeAssignment,
 );
 
+router.get(
+  '/assignments/completed',
+  authorizeRoles('ADMIN', 'ORGANIZATION'),
+  controller.getOrganizationCompletedAssignments,
+);
+
 // ============================================
 // GAMIFICATION
 // ============================================
@@ -64,6 +70,24 @@ router.get(
   '/me',
   authorizeRoles('VOLUNTEER', 'ADMIN', 'ORGANIZATION'),
   controller.getVolunteerGamification,
+);
+
+// ============================================
+// BADGES - Gestión de Badges NFT
+// ============================================
+router.get(
+  '/badges',
+  authorizeRoles('ORGANIZATION', 'ADMIN', 'VOLUNTEER'),
+  controller.listBadges,
+);
+
+router.post(
+  '/badges',
+  authorizeRoles('ORGANIZATION', 'ADMIN'),
+  uploadSingle('icon'),
+  handleMulterError,
+  validate(schemas.createBadgeSchema),
+  controller.createBadge,
 );
 
 module.exports = router;

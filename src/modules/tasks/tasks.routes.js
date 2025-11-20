@@ -26,6 +26,13 @@ router.patch(
   controller.updateTaskStatus,
 );
 
+router.post(
+  '/:id/assign',
+  validate(schemas.taskIdParamSchema, 'params'),
+  validate(schemas.assignTaskSchema),
+  controller.assignTaskToVolunteer,
+);
+
 module.exports = router;
 
 

@@ -326,14 +326,18 @@ const getMyAssignments = async (userId, filters = {}) => {
         },
       },
       volunteer: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+        },
+      },
+      assignedByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
         },
       },
     },
@@ -374,8 +378,23 @@ const acceptAssignment = async (assignmentId, userId) => {
       respondedAt: new Date(),
     },
     include: {
-      task: true,
-      volunteer: true,
+      task: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      volunteer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -412,8 +431,23 @@ const rejectAssignment = async (assignmentId, userId, reason = null) => {
       verificationNotes: reason || 'Rechazada por el voluntario',
     },
     include: {
-      task: true,
-      volunteer: true,
+      task: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      volunteer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -472,12 +506,19 @@ const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes 
     include: {
       task: {
         include: {
-          organization: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
       volunteer: {
-        include: {
-          user: true,
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
         },
       },
     },

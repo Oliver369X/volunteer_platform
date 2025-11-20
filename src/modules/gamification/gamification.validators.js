@@ -19,10 +19,20 @@ const leaderboardQuerySchema = Joi.object({
   timeframe: Joi.string().valid('weekly', 'monthly', 'yearly', 'all').default('all'),
 });
 
+const createBadgeSchema = Joi.object({
+  code: Joi.string().max(80).required(),
+  name: Joi.string().max(120).required(),
+  description: Joi.string().max(500).optional(),
+  category: Joi.string().max(60).optional(),
+  level: Joi.string().valid('BRONCE', 'PLATA', 'ORO', 'PLATINO', 'ESPECIAL').default('BRONCE'),
+  criteria: Joi.object().optional(),
+});
+
 module.exports = {
   assignmentIdParamSchema,
   completeAssignmentSchema,
   leaderboardQuerySchema,
+  createBadgeSchema,
 };
 
 

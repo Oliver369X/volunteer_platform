@@ -47,12 +47,26 @@ const listTasks = async (req, res, next) => {
   }
 };
 
+const assignTaskToVolunteer = async (req, res, next) => {
+  try {
+    const assignment = await tasksService.assignTaskToVolunteer(
+      req.params.id,
+      req.body.volunteerId,
+      req.user,
+    );
+    return res.status(201).json({ status: 'success', data: assignment });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createTask,
   updateTask,
   updateTaskStatus,
   getTask,
   listTasks,
+  assignTaskToVolunteer,
 };
 
 

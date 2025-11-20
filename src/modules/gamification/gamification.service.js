@@ -527,6 +527,67 @@ const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes 
   return updated;
 };
 
+// ============================================
+// CREATE BADGE - Crear badge NFT
+// ============================================
+const createBadge = async (payload, iconFile, requester) => {
+  const prisma = getPrisma();
+  const cloudinaryClient = require('../../services/cloudinary-client');
+  const logger = require('../../utils/logger');
+
+  // Verificar que el usuario es organización o admin
+  if (requester.role !== 'ORGANIZATION' && requester.role !== 'ADMIN') {
+    throw new AuthorizationError('Solo las organizaciones pueden crear badges');
+  }
+
+  // Verificar que el código no existe
+  const existingBadge = await prisma.badge.findUnique({
+    where: { code: payload.code },
+  });
+
+  if (existingBadge) {
+    throw new ValidationError('Ya existe un badge con este código');
+  }
+
+  let iconUrl = null;
+
+  // Subir imagen si existe
+  if (iconFile) {
+    try {
+      const result = await cloudinaryClient.uploadImage(iconFile, {
+        folder: 'badges',
+        transformation: [
+          { width: 512, height: 512, crop: 'limit' },
+          { quality: 'auto:good' },
+          { fetch_format: 'auto' },
+        ],
+      });
+      iconUrl = result.url;
+      logger.info('Imagen de badge subida a Cloudinary', { url: iconUrl });
+    } catch (error) {
+      logger.warn('Error al subir imagen de badge', { error: error.message });
+      throw new ValidationError('Error al subir la imagen del badge');
+    }
+  }
+
+  // Crear badge
+  const badge = await prisma.badge.create({
+    data: {
+      code: payload.code,
+      name: payload.name,
+      description: payload.description,
+      category: payload.category,
+      level: payload.level || 'BRONCE',
+      criteria: payload.criteria || {},
+      iconUrl,
+    },
+  });
+
+  logger.info('Badge creado', { badgeId: badge.id, code: badge.code });
+
+  return badge;
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
@@ -535,4 +596,5 @@ module.exports = {
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,
+  createBadge,
 };

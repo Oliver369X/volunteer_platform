@@ -66,6 +66,18 @@ router.get(
   controller.getVolunteerGamification,
 );
 
+// ============================================
+// BADGES - Gestión de Badges NFT
+// ============================================
+router.post(
+  '/badges',
+  authorizeRoles('ORGANIZATION', 'ADMIN'),
+  uploadSingle('icon'),
+  handleMulterError,
+  validate(schemas.createBadgeSchema),
+  controller.createBadge,
+);
+
 module.exports = router;
 
 

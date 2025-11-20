@@ -90,6 +90,28 @@ const markAsCompleted = async (req, res, next) => {
   }
 };
 
+// ============================================
+// CREATE BADGE - Crear badge NFT
+// ============================================
+const createBadge = async (req, res, next) => {
+  try {
+    const iconFile = req.file ? req.file.buffer : null;
+    const payload = {
+      code: req.body.code,
+      name: req.body.name,
+      description: req.body.description,
+      category: req.body.category,
+      level: req.body.level,
+      criteria: req.body.criteria ? JSON.parse(req.body.criteria) : {},
+    };
+
+    const result = await gamificationService.createBadge(payload, iconFile, req.user);
+    return res.status(201).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
@@ -98,6 +120,7 @@ module.exports = {
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,
+  createBadge,
 };
 
 

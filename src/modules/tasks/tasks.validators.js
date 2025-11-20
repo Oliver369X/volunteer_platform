@@ -51,12 +51,17 @@ const listTasksSchema = Joi.object({
   assignedToMe: Joi.boolean().optional(),
 });
 
+const assignTaskSchema = Joi.object({
+  volunteerId: Joi.string().guid({ version: 'uuidv4' }).required(),
+});
+
 module.exports = {
   createTaskSchema,
   updateTaskSchema,
   updateStatusSchema,
   taskIdParamSchema,
   listTasksSchema,
+  assignTaskSchema,
 };
 
 

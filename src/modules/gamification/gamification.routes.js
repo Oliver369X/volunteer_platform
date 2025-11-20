@@ -51,6 +51,12 @@ router.post(
   controller.completeAssignment,
 );
 
+router.get(
+  '/assignments/completed',
+  authorizeRoles('ADMIN', 'ORGANIZATION'),
+  controller.getOrganizationCompletedAssignments,
+);
+
 // ============================================
 // GAMIFICATION
 // ============================================

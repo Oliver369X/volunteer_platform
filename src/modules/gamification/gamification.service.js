@@ -302,12 +302,24 @@ const getVolunteerGamification = async (userId) => {
       id: award.id,
       tokenId: award.tokenId,
       blockchainStatus: award.blockchainStatus,
+      metadata: award.metadata,
+      earnedAt: award.createdAt,
+      createdAt: award.createdAt,
+      awardedAt: award.createdAt,
       badge: {
+        id: award.badge.id,
         code: award.badge.code,
         name: award.badge.name,
+        description: award.badge.description,
         level: award.badge.level,
+        category: award.badge.category,
+        iconUrl: award.badge.iconUrl,
       },
-      awardedAt: award.createdAt,
+      // También incluir propiedades directas para compatibilidad
+      name: award.badge.name,
+      description: award.badge.description,
+      level: award.badge.level,
+      iconUrl: award.badge.iconUrl,
     })),
   };
 };
@@ -359,6 +371,89 @@ const getMyAssignments = async (userId, filters = {}) => {
       },
     },
     orderBy: [
+      { assignedAt: 'desc' },
+    ],
+  });
+
+  return assignments;
+};
+
+// ============================================
+// GET ORGANIZATION COMPLETED ASSIGNMENTS - Ver asignaciones completadas de la organización
+// ============================================
+const getOrganizationCompletedAssignments = async (requester, filters = {}) => {
+  const prisma = getPrisma();
+  const { AuthorizationError } = require('../../core/api-error');
+
+  // Obtener organizaciones del usuario
+  const memberships = await prisma.organizationMember.findMany({
+    where: { userId: requester.id },
+    include: { organization: true },
+  });
+
+  if (requester.role !== 'ADMIN' && memberships.length === 0) {
+    throw new AuthorizationError('No perteneces a ninguna organización');
+  }
+
+  const organizationIds = requester.role === 'ADMIN' 
+    ? undefined 
+    : memberships.map((m) => m.organizationId);
+
+  const where = {
+    organizationId: organizationIds ? { in: organizationIds } : undefined,
+    status: { in: ['COMPLETED', 'VERIFIED'] },
+    deletedAt: null,
+  };
+
+  // Filtro por status específico
+  if (filters.status) {
+    const statuses = filters.status.split(',').map((s) => s.trim());
+    where.status = { in: statuses };
+  }
+
+  // Filtro por organización específica
+  if (filters.organizationId) {
+    // Verificar acceso
+    if (requester.role !== 'ADMIN') {
+      const hasAccess = memberships.some((m) => m.organizationId === filters.organizationId);
+      if (!hasAccess) {
+        throw new AuthorizationError('No tienes acceso a esta organización');
+      }
+    }
+    where.organizationId = filters.organizationId;
+  }
+
+  const assignments = await prisma.assignment.findMany({
+    where,
+    include: {
+      task: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      volunteer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+        },
+      },
+      assignedBy: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: [
+      { completedAt: 'desc' },
       { assignedAt: 'desc' },
     ],
   });
@@ -648,6 +743,7 @@ module.exports = {
   getLeaderboard,
   getVolunteerGamification,
   getMyAssignments,
+  getOrganizationCompletedAssignments,
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,

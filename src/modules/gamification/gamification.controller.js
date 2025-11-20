@@ -124,11 +124,27 @@ const listBadges = async (req, res, next) => {
   }
 };
 
+// ============================================
+// GET ORGANIZATION COMPLETED ASSIGNMENTS - Ver asignaciones completadas
+// ============================================
+const getOrganizationCompletedAssignments = async (req, res, next) => {
+  try {
+    const result = await gamificationService.getOrganizationCompletedAssignments(
+      req.user,
+      req.query,
+    );
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
   getVolunteerGamification,
   getMyAssignments,
+  getOrganizationCompletedAssignments,
   acceptAssignment,
   rejectAssignment,
   markAsCompleted,

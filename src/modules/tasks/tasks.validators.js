@@ -16,6 +16,7 @@ const createTaskSchema = Joi.object({
   endAt: Joi.date().optional(),
   volunteersNeeded: Joi.number().integer().min(1).max(500).default(1),
   metadata: Joi.object().optional(),
+  badgeCodes: Joi.array().items(Joi.string().max(80)).optional(),
 });
 
 const updateTaskSchema = Joi.object({
@@ -31,6 +32,7 @@ const updateTaskSchema = Joi.object({
   endAt: Joi.date().optional(),
   volunteersNeeded: Joi.number().integer().min(1).max(500).optional(),
   metadata: Joi.object().optional(),
+  badgeCodes: Joi.array().items(Joi.string().max(80)).optional(),
 }).min(1);
 
 const updateStatusSchema = Joi.object({

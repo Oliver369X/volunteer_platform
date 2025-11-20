@@ -45,7 +45,12 @@ const ensureOrgAssignmentAccess = async (prisma, assignment, requester) => {
 const completeAssignment = async (assignmentId, payload, requester) => {
   const prisma = getPrisma();
 
-  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+  const assignment = await prisma.assignment.findUnique({ 
+    where: { id: assignmentId },
+    include: {
+      task: true,
+    },
+  });
   if (!assignment) {
     throw new NotFoundError('Asignación no encontrada');
   }
@@ -62,6 +67,17 @@ const completeAssignment = async (assignmentId, payload, requester) => {
 
   if (!volunteerProfile) {
     throw new NotFoundError('Perfil de voluntario no encontrado');
+  }
+
+  // Get badge codes from task metadata if not provided in payload
+  let badgeCodesToAward = payload.badgeCodes || [];
+  if (!badgeCodesToAward.length && assignment.task?.metadata) {
+    const taskMetadata = typeof assignment.task.metadata === 'string' 
+      ? JSON.parse(assignment.task.metadata) 
+      : assignment.task.metadata;
+    if (taskMetadata.badgeCodes && Array.isArray(taskMetadata.badgeCodes)) {
+      badgeCodesToAward = taskMetadata.badgeCodes;
+    }
   }
 
   const totalPoints = volunteerProfile.totalPoints + payload.pointsAwarded;
@@ -106,9 +122,9 @@ const completeAssignment = async (assignmentId, payload, requester) => {
       },
     });
 
-    if (payload.badgeCodes?.length) {
+    if (badgeCodesToAward.length) {
       const badges = await tx.badge.findMany({
-        where: { code: { in: payload.badgeCodes } },
+        where: { code: { in: badgeCodesToAward } },
       });
 
       for (const badge of badges) {
@@ -147,7 +163,7 @@ const completeAssignment = async (assignmentId, payload, requester) => {
         metadata: {
           rating: payload.rating,
           pointsAwarded: payload.pointsAwarded,
-          badgeCodes: payload.badgeCodes,
+          badgeCodes: badgeCodesToAward,
         },
       },
     });
@@ -464,7 +480,8 @@ const rejectAssignment = async (assignmentId, userId, reason = null) => {
  */
 const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes = '') => {
   const prisma = getPrisma();
-  const cloudinaryClient = require('../services/cloudinary-client');
+  const cloudinaryClient = require('../../services/cloudinary-client');
+  const logger = require('../../utils/logger');
 
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId },

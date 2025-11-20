@@ -50,7 +50,7 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
         },
         {
           trait_type: 'Volunteer Name',
-          value: volunteer.fullName,
+          value: volunteer.fullName || volunteer.name || 'Voluntario',
         },
         {
           trait_type: 'Generated With',

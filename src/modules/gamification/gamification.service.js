@@ -12,7 +12,7 @@ const LEVEL_THRESHOLDS = [
   { level: 'PLATINO', minPoints: 5000 },
 ];
 
-const ACTIVE_COMPLETION_STATUSES = ['PENDING', 'ACCEPTED', 'IN_PROGRESS'];
+const ACTIVE_COMPLETION_STATUSES = ['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED'];
 
 const getLevelForPoints = (points) => {
   let currentLevel = 'BRONCE';
@@ -88,6 +88,17 @@ const completeAssignment = async (assignmentId, payload, requester) => {
   );
 
   const awardedBadges = [];
+  const logger = require('../../utils/logger');
+
+  // Obtener información completa del voluntario antes de la transacción
+  const volunteer = await prisma.user.findUnique({
+    where: { id: assignment.volunteerId },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+    },
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.assignment.update({
@@ -135,11 +146,7 @@ const completeAssignment = async (assignmentId, payload, requester) => {
             assignmentId,
           },
         });
-        await blockchainSimulator.mintBadge({
-          volunteerBadge,
-          badge,
-          volunteer: { id: assignment.volunteerId },
-        });
+        
         awardedBadges.push({
           id: volunteerBadge.id,
           badge: {
@@ -168,6 +175,47 @@ const completeAssignment = async (assignmentId, payload, requester) => {
       },
     });
   });
+
+  // Mintear badges después de la transacción para evitar conflictos
+  if (badgeCodesToAward.length && awardedBadges.length > 0) {
+    const badges = await prisma.badge.findMany({
+      where: { code: { in: badgeCodesToAward } },
+    });
+
+    const badgeMap = new Map(badges.map((b) => [b.code, b]));
+
+    for (const awardedBadge of awardedBadges) {
+      const badge = badgeMap.get(awardedBadge.badge.code);
+      if (badge) {
+        try {
+          const volunteerBadge = await prisma.volunteerBadge.findUnique({
+            where: { id: awardedBadge.id },
+          });
+          
+          await blockchainSimulator.mintBadge({
+            volunteerBadge,
+            badge,
+            volunteer: volunteer || { id: assignment.volunteerId, fullName: 'Voluntario', email: '' },
+          });
+          
+          // Actualizar el tokenId en awardedBadges
+          const updated = await prisma.volunteerBadge.findUnique({
+            where: { id: awardedBadge.id },
+          });
+          awardedBadge.tokenId = updated.tokenId;
+        } catch (mintError) {
+          // Si falla el minting, continuar pero loguear el error
+          logger.error('Error al mintear badge, continuando sin minting', {
+            error: mintError.message,
+            badgeId: badge.id,
+            volunteerBadgeId: awardedBadge.id,
+            stack: mintError.stack,
+          });
+          // El badge ya está creado, solo no se minteó
+        }
+      }
+    }
+  }
 
   return {
     assignmentId: assignment.id,
@@ -291,7 +339,7 @@ const getVolunteerGamification = async (userId) => {
         badge: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      // No limitar, mostrar todos los badges del voluntario
     }),
   ]);
 

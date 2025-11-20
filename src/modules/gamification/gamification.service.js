@@ -333,7 +333,7 @@ const getMyAssignments = async (userId, filters = {}) => {
           role: true,
         },
       },
-      assignedByUser: {
+      assignedBy: {  // Changed from assignedByUser to assignedBy
         select: {
           id: true,
           fullName: true,

@@ -112,6 +112,18 @@ const createBadge = async (req, res, next) => {
   }
 };
 
+// ============================================
+// LIST BADGES - Listar todos los badges
+// ============================================
+const listBadges = async (req, res, next) => {
+  try {
+    const result = await gamificationService.listBadges(req.query);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
@@ -121,6 +133,7 @@ module.exports = {
   rejectAssignment,
   markAsCompleted,
   createBadge,
+  listBadges,
 };
 
 

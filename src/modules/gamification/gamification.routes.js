@@ -69,6 +69,12 @@ router.get(
 // ============================================
 // BADGES - Gestión de Badges NFT
 // ============================================
+router.get(
+  '/badges',
+  authorizeRoles('ORGANIZATION', 'ADMIN', 'VOLUNTEER'),
+  controller.listBadges,
+);
+
 router.post(
   '/badges',
   authorizeRoles('ORGANIZATION', 'ADMIN'),

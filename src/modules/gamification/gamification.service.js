@@ -304,6 +304,7 @@ const getMyAssignments = async (userId, filters = {}) => {
 
   const where = {
     volunteerId: userId,
+    deletedAt: null, // Exclude deleted assignments
   };
 
   // Filtro por status
@@ -588,6 +589,43 @@ const createBadge = async (payload, iconFile, requester) => {
   return badge;
 };
 
+// ============================================
+// LIST BADGES - Listar todos los badges
+// ============================================
+const listBadges = async (filters = {}) => {
+  const prisma = getPrisma();
+
+  const where = {
+    deletedAt: null,
+  };
+
+  if (filters.level) {
+    where.level = filters.level;
+  }
+
+  if (filters.category) {
+    where.category = filters.category;
+  }
+
+  if (filters.search) {
+    where.OR = [
+      { name: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+      { code: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
+  const badges = await prisma.badge.findMany({
+    where,
+    orderBy: [
+      { createdAt: 'desc' },
+    ],
+    take: filters.limit || 100,
+  });
+
+  return badges;
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
@@ -597,4 +635,5 @@ module.exports = {
   rejectAssignment,
   markAsCompleted,
   createBadge,
+  listBadges,
 };

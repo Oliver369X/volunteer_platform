@@ -13,7 +13,7 @@ const app = express();
 
 // Configuración de CORS más robusta
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'https://urchin-app-w4fo2.ondigitalocean.app/'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

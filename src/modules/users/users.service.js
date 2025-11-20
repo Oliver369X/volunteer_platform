@@ -1,7 +1,8 @@
 'use strict';
 
 const { getPrisma } = require('../../database');
-const { NotFoundError, AuthorizationError } = require('../../core/api-error');
+const { NotFoundError, AuthorizationError, ValidationError } = require('../../core/api-error');
+const { hashPassword, verifyPassword } = require('../../utils/password');
 
 const updateProfile = async (userId, payload) => {
   const prisma = getPrisma();
@@ -105,8 +106,78 @@ const listVolunteers = async (requester, filters) => {
   }));
 };
 
+// ============================================
+// CHANGE PASSWORD - Cambiar contraseña
+// ============================================
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const prisma = getPrisma();
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  // Verificar contraseña actual
+  const isValid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!isValid) {
+    throw new ValidationError('La contraseña actual es incorrecta');
+  }
+
+  // Hash de la nueva contraseña
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: newPasswordHash },
+  });
+
+  return { success: true };
+};
+
+/**
+ * Subir avatar de usuario
+ * @param {string} userId - ID del usuario
+ * @param {Buffer} fileBuffer - Buffer del archivo
+ * @returns {Promise<object>} - URL del avatar
+ */
+const uploadAvatar = async (userId, fileBuffer) => {
+  const prisma = getPrisma();
+  const cloudinaryClient = require('../services/cloudinary-client');
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  // Subir a Cloudinary
+  const result = await cloudinaryClient.uploadAvatar(fileBuffer, userId);
+
+  // Actualizar URL en la base de datos (agregar campo avatarUrl si no existe)
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      metadata: {
+        ...(user.metadata || {}),
+        avatarUrl: result.url,
+        avatarPublicId: result.public_id,
+      },
+    },
+  });
+
+  return {
+    avatarUrl: result.url,
+    user: {
+      id: updated.id,
+      fullName: updated.fullName,
+      email: updated.email,
+    },
+  };
+};
+
 module.exports = {
   updateProfile,
   updateVolunteerProfile,
   listVolunteers,
+  changePassword,
+  uploadAvatar,
 };

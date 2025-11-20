@@ -25,10 +25,16 @@ const volunteerQuerySchema = Joi.object({
   search: Joi.string().optional(),
 });
 
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required(),
+  newPassword: Joi.string().min(8).max(100).required(),
+});
+
 module.exports = {
   updateProfileSchema,
   updateVolunteerProfileSchema,
   volunteerQuerySchema,
+  changePasswordSchema,
 };
 
 

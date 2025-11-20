@@ -86,8 +86,117 @@ const requestRecommendations = async (task, volunteers) => {
   }
 };
 
+/**
+ * Generar descripción de badge con IA
+ * @param {object} badgeInfo - Información del badge
+ * @returns {Promise<string>} - Descripción generada
+ */
+const generateBadgeDescription = async (badgeInfo) => {
+  const config = loadEnv().integrations;
+  if (!config.geminiApiKey) {
+    logger.warn('Gemini API key no configurado. Usando descripción por defecto.');
+    return `Badge ${badgeInfo.name} de nivel ${badgeInfo.level}`;
+  }
+
+  try {
+    const prompt = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `Genera una descripción inspiradora y profesional en español para un badge NFT de voluntariado con las siguientes características:
+              
+Nombre: ${badgeInfo.name}
+Nivel: ${badgeInfo.level}
+Categoría: ${badgeInfo.category || 'General'}
+Logro: ${badgeInfo.achievement || 'Participación destacada'}
+
+La descripción debe:
+- Ser de máximo 150 caracteres
+- Ser motivadora y celebrar el logro
+- Mencionar el impacto del voluntario
+- No usar emojis
+
+Responde SOLO con la descripción, sin formato adicional.`,
+            },
+          ],
+        },
+      ],
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`;
+    const response = await axios.post(url, prompt, {
+      params: { key: config.geminiApiKey },
+    });
+
+    const description = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return description || `Badge ${badgeInfo.name} otorgado por ${badgeInfo.achievement || 'contribución excepcional'}`;
+  } catch (error) {
+    logger.error('Error al generar descripción con Gemini', {
+      error: error.response?.data || error.message,
+    });
+    return `Badge ${badgeInfo.name} de nivel ${badgeInfo.level}`;
+  }
+};
+
+/**
+ * Generar prompt para imagen de badge
+ * @param {object} badgeInfo - Información del badge
+ * @returns {Promise<string>} - Prompt para generación de imagen
+ */
+const generateBadgeImagePrompt = async (badgeInfo) => {
+  const config = loadEnv().integrations;
+  if (!config.geminiApiKey) {
+    return `A ${badgeInfo.level} level badge medal for volunteer work`;
+  }
+
+  try {
+    const prompt = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `Genera un prompt en inglés para crear una imagen de badge/medalla NFT con estas características:
+
+Nombre: ${badgeInfo.name}
+Nivel: ${badgeInfo.level} (BRONCE=bronze, PLATA=silver, ORO=gold, PLATINO=platinum)
+Categoría: ${badgeInfo.category || 'General'}
+
+El prompt debe describir:
+- Una medalla/badge circular o hexagonal
+- Colores según el nivel (bronce/plata/oro/platino)
+- Estilo moderno, digital, NFT art
+- Símbolos relacionados con voluntariado humanitario
+- Alta calidad, 3D render
+
+Responde SOLO con el prompt en inglés, máximo 200 caracteres.`,
+            },
+          ],
+        },
+      ],
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`;
+    const response = await axios.post(url, prompt, {
+      params: { key: config.geminiApiKey },
+    });
+
+    const generatedPrompt = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return generatedPrompt || `A ${badgeInfo.level} level badge medal for volunteer humanitarian work, 3D render, modern, digital art, NFT style`;
+  } catch (error) {
+    logger.error('Error al generar prompt de imagen', {
+      error: error.response?.data || error.message,
+    });
+    return `A ${badgeInfo.level} level badge medal for volunteer work, 3D digital art, NFT style`;
+  }
+};
+
 module.exports = {
   requestRecommendations,
+  generateBadgeDescription,
+  generateBadgeImagePrompt,
 };
 
 

@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const loadEnv = require('../config/env');
 const logger = require('../utils/logger');
 const pinataClient = require('./pinata-client');
+const badgeGenerator = require('./badge-generator');
 const { getPrisma } = require('../database');
 
 const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
@@ -14,11 +15,22 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
   }
 
   try {
-    // Crear metadata del badge
+    // 🎨 NUEVO: Generar imagen del badge con IA
+    logger.info('🎨 Generando imagen de badge con IA...', { badge: badge.name });
+    const generatedBadge = await badgeGenerator.generateBadge({
+      name: badge.name,
+      level: badge.level,
+      code: badge.code,
+      category: badge.category,
+      achievement: badge.description,
+    });
+
+    // Crear metadata del badge con imagen generada
     const metadata = {
       name: badge.name,
-      description: badge.description || `Badge ${badge.name} otorgado por participación`,
-      image: badge.iconUrl || 'https://via.placeholder.com/150',
+      description: generatedBadge.description || badge.description || `Badge ${badge.name} otorgado por participación destacada`,
+      image: generatedBadge.imageUrl, // Imagen generada con IA
+      external_url: `https://lacausa.org/badges/${badge.code}`,
       attributes: [
         {
           trait_type: 'Badge Code',
@@ -37,6 +49,14 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
           value: volunteer.id,
         },
         {
+          trait_type: 'Volunteer Name',
+          value: volunteer.fullName,
+        },
+        {
+          trait_type: 'Generated With',
+          value: generatedBadge.metadata?.generatedWith || 'AI',
+        },
+        {
           trait_type: 'Minted At',
           value: new Date().toISOString(),
         },
@@ -45,13 +65,43 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
 
     let tokenId = `mock-nft-${uuidv4()}`;
     let ipfsMetadata = null;
+    let finalImageUrl = generatedBadge.imageUrl;
 
-    // Si Pinata está configurado, subir a IPFS
+    // 📤 PASO 1: Si la imagen no está ya en Cloudinary, subirla
+    if (finalImageUrl && !finalImageUrl.includes('cloudinary.com') && !finalImageUrl.includes('placeholder')) {
+      try {
+        logger.info('📤 Subiendo imagen del badge a Cloudinary...');
+        const cloudinaryClient = require('./cloudinary-client');
+        
+        // Descargar la imagen generada
+        const axios = require('axios');
+        const imageResponse = await axios.get(finalImageUrl, { responseType: 'arraybuffer' });
+        const imageBuffer = Buffer.from(imageResponse.data);
+        
+        // Subir a Cloudinary
+        const cloudinaryResult = await cloudinaryClient.uploadImage(imageBuffer, {
+          folder: 'volunteer-platform/badges',
+          public_id: `badge_${badge.code}_${volunteer.id}_${Date.now()}`,
+        });
+        
+        finalImageUrl = cloudinaryResult.url;
+        metadata.image = finalImageUrl;
+        logger.info('✅ Imagen del badge subida a Cloudinary', { url: finalImageUrl });
+      } catch (uploadError) {
+        logger.warn('⚠️ Error al subir imagen a Cloudinary, usando URL original', { 
+          error: uploadError.message 
+        });
+      }
+    }
+
+    // 📤 PASO 2: Subir metadata completa a IPFS con Pinata
     if (process.env.PINATA_JWT) {
       try {
+        logger.info('📤 Subiendo metadata del badge NFT a IPFS/Pinata...');
+        
         const result = await pinataClient.pinJSON(
           metadata,
-          `badge-${badge.code}-${volunteer.id}`,
+          `badge-${badge.code}-${volunteer.id}-${Date.now()}`,
         );
         
         if (result) {
@@ -61,11 +111,16 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
             timestamp: result.timestamp,
           };
           tokenId = `nft-${result.ipfsHash}`;
-          logger.info('Badge metadata subido a IPFS', { ipfsHash: result.ipfsHash });
+          logger.info('✅ Badge metadata subido a IPFS', { 
+            ipfsHash: result.ipfsHash,
+            gatewayUrl: result.gatewayUrl,
+          });
         }
       } catch (error) {
-        logger.warn('Error al subir a Pinata, usando mock', { error: error.message });
+        logger.warn('⚠️ Error al subir a Pinata, usando tokenId mock', { error: error.message });
       }
+    } else {
+      logger.warn('⚠️ Pinata JWT no configurado, usando modo mock');
     }
 
     // Actualizar el badge con la información del NFT

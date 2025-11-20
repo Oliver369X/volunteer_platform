@@ -296,8 +296,202 @@ const getVolunteerGamification = async (userId) => {
   };
 };
 
+// ============================================
+// GET MY ASSIGNMENTS - Ver mis asignaciones
+// ============================================
+const getMyAssignments = async (userId, filters = {}) => {
+  const prisma = getPrisma();
+
+  const where = {
+    volunteerId: userId,
+  };
+
+  // Filtro por status
+  if (filters.status) {
+    const statuses = filters.status.split(',').map((s) => s.trim());
+    where.status = { in: statuses };
+  }
+
+  const assignments = await prisma.assignment.findMany({
+    where,
+    include: {
+      task: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      volunteer: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { assignedAt: 'desc' },
+    ],
+  });
+
+  return assignments;
+};
+
+// ============================================
+// ACCEPT ASSIGNMENT - Aceptar asignación
+// ============================================
+const acceptAssignment = async (assignmentId, userId) => {
+  const prisma = getPrisma();
+
+  const assignment = await prisma.assignment.findUnique({
+    where: { id: assignmentId },
+  });
+
+  if (!assignment) {
+    throw new NotFoundError('Asignación no encontrada');
+  }
+
+  if (assignment.volunteerId !== userId) {
+    throw new AuthorizationError('No puedes aceptar una asignación que no es tuya');
+  }
+
+  if (assignment.status !== 'PENDING') {
+    throw new ValidationError('Solo puedes aceptar asignaciones pendientes');
+  }
+
+  const updated = await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: {
+      status: 'ACCEPTED',
+      respondedAt: new Date(),
+    },
+    include: {
+      task: true,
+      volunteer: true,
+    },
+  });
+
+  return updated;
+};
+
+// ============================================
+// REJECT ASSIGNMENT - Rechazar asignación
+// ============================================
+const rejectAssignment = async (assignmentId, userId, reason = null) => {
+  const prisma = getPrisma();
+
+  const assignment = await prisma.assignment.findUnique({
+    where: { id: assignmentId },
+  });
+
+  if (!assignment) {
+    throw new NotFoundError('Asignación no encontrada');
+  }
+
+  if (assignment.volunteerId !== userId) {
+    throw new AuthorizationError('No puedes rechazar una asignación que no es tuya');
+  }
+
+  if (assignment.status !== 'PENDING') {
+    throw new ValidationError('Solo puedes rechazar asignaciones pendientes');
+  }
+
+  const updated = await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: {
+      status: 'REJECTED',
+      respondedAt: new Date(),
+      verificationNotes: reason || 'Rechazada por el voluntario',
+    },
+    include: {
+      task: true,
+      volunteer: true,
+    },
+  });
+
+  return updated;
+};
+
+/**
+ * Marcar asignación como completada (desde el voluntario)
+ * @param {string} assignmentId - ID de la asignación
+ * @param {string} userId - ID del voluntario
+ * @param {Buffer} evidenceFile - Archivo de evidencia (opcional)
+ * @param {string} notes - Notas del voluntario
+ */
+const markAsCompleted = async (assignmentId, userId, evidenceFile = null, notes = '') => {
+  const prisma = getPrisma();
+  const cloudinaryClient = require('../services/cloudinary-client');
+
+  const assignment = await prisma.assignment.findUnique({
+    where: { id: assignmentId },
+  });
+
+  if (!assignment) {
+    throw new NotFoundError('Asignación no encontrada');
+  }
+
+  if (assignment.volunteerId !== userId) {
+    throw new AuthorizationError('No puedes completar una asignación que no es tuya');
+  }
+
+  if (!['ACCEPTED', 'IN_PROGRESS'].includes(assignment.status)) {
+    throw new ValidationError('Solo puedes completar asignaciones aceptadas o en progreso');
+  }
+
+  let evidenceUrl = null;
+
+  // Subir evidencia si existe
+  if (evidenceFile) {
+    try {
+      const result = await cloudinaryClient.uploadEvidence(evidenceFile, assignmentId);
+      evidenceUrl = result.url;
+      logger.info('Evidencia subida a Cloudinary', { url: evidenceUrl });
+    } catch (error) {
+      logger.warn('Error al subir evidencia, continuando sin ella', { error: error.message });
+    }
+  }
+
+  // Actualizar asignación a COMPLETED (pendiente de verificación)
+  const updated = await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: {
+      status: 'COMPLETED',
+      completedAt: new Date(),
+      evidenceUrl,
+      verificationNotes: notes,
+    },
+    include: {
+      task: {
+        include: {
+          organization: true,
+        },
+      },
+      volunteer: {
+        include: {
+          user: true,
+        },
+      },
+    },
+  });
+
+  return updated;
+};
+
 module.exports = {
   completeAssignment,
   getLeaderboard,
   getVolunteerGamification,
+  getMyAssignments,
+  acceptAssignment,
+  rejectAssignment,
+  markAsCompleted,
 };

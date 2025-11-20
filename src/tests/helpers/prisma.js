@@ -43,10 +43,10 @@ const cleanup = async () => {
     
     // Eliminar datos en orden inverso de dependencias usando transacciones
     await prismaInstance.$transaction([
-      prismaInstance.volunteerBadge.deleteMany(),
-      prismaInstance.pointTransaction.deleteMany(),
       prismaInstance.aiRecommendation.deleteMany(),
       prismaInstance.auditLog.deleteMany(),
+      prismaInstance.pointTransaction.deleteMany(),
+      prismaInstance.volunteerBadge.deleteMany(),
       prismaInstance.assignment.deleteMany(),
       prismaInstance.task.deleteMany(),
       prismaInstance.organizationMember.deleteMany(),

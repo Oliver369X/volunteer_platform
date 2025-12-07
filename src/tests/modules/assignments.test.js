@@ -62,7 +62,7 @@ describe('Assignments Management (Sprint 1)', () => {
       data: {
         organizationId: organization.id,
         userId: orgUser.id,
-        role: 'ADMIN',
+        role: 'OWNER',
       },
     });
 
@@ -124,11 +124,11 @@ describe('Assignments Management (Sprint 1)', () => {
     it('debería obtener mis asignaciones como voluntario', async () => {
       const response = await request(app)
         .get('/api/gamification/assignments')
-        .set(...getAuthHeader(volunteerToken));
+        .set('Authorization', `Bearer ${volunteerToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('success');
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(Array.isArray(response.body.data}`).toBe(true);
       expect(response.body.data.length).toBeGreaterThan(0);
       expect(response.body.data[0]).toHaveProperty('task');
       expect(response.body.data[0]).toHaveProperty('status');
@@ -149,17 +149,17 @@ describe('Assignments Management (Sprint 1)', () => {
 
       const response = await request(app)
         .get('/api/gamification/assignments?status=PENDING')
-        .set(...getAuthHeader(volunteerToken));
+        .set('Authorization', `Bearer ${volunteerToken}`);
 
       expect(response.status).toBe(200);
       const assignments = response.body.data;
-      expect(assignments.every((a) => a.status === 'PENDING')).toBe(true);
+      expect(assignments.every((a) => a.status === 'PENDING'}`).toBe(true);
     });
 
     it('debería fallar si no es voluntario', async () => {
       const response = await request(app)
         .get('/api/gamification/assignments')
-        .set(...getAuthHeader(orgToken));
+        .set('Authorization', `Bearer ${orgToken}`);
 
       expect(response.status).toBe(403);
     });
@@ -172,7 +172,7 @@ describe('Assignments Management (Sprint 1)', () => {
     it('debería aceptar una asignación pendiente', async () => {
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/accept`)
-        .set(...getAuthHeader(volunteerToken));
+        .set('Authorization', `Bearer ${volunteerToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.data.status).toBe('ACCEPTED');
@@ -202,7 +202,7 @@ describe('Assignments Management (Sprint 1)', () => {
 
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/accept`)
-        .set(...getAuthHeader(otherToken));
+        .set('Authorization', `Bearer ${otherToken}`);
 
       expect(response.status).toBe(403);
     });
@@ -216,7 +216,7 @@ describe('Assignments Management (Sprint 1)', () => {
 
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/accept`)
-        .set(...getAuthHeader(volunteerToken));
+        .set('Authorization', `Bearer ${volunteerToken}`);
 
       expect(response.status).toBe(400);
     });
@@ -229,7 +229,7 @@ describe('Assignments Management (Sprint 1)', () => {
     it('debería rechazar una asignación pendiente', async () => {
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/reject`)
-        .set(...getAuthHeader(volunteerToken))
+        .set('Authorization', `Bearer ${volunteerToken}`)
         .send({ reason: 'No disponible en esa fecha' });
 
       expect(response.status).toBe(200);
@@ -240,7 +240,7 @@ describe('Assignments Management (Sprint 1)', () => {
     it('debería rechazar sin motivo (opcional)', async () => {
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/reject`)
-        .set(...getAuthHeader(volunteerToken))
+        .set('Authorization', `Bearer ${volunteerToken}`)
         .send({});
 
       expect(response.status).toBe(200);
@@ -263,7 +263,7 @@ describe('Assignments Management (Sprint 1)', () => {
     it('debería marcar asignación como completada', async () => {
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/mark-completed`)
-        .set(...getAuthHeader(volunteerToken))
+        .set('Authorization', `Bearer ${volunteerToken}`)
         .send({ notes: 'Tarea completada exitosamente' });
 
       expect(response.status).toBe(200);
@@ -281,7 +281,7 @@ describe('Assignments Management (Sprint 1)', () => {
 
       const response = await request(app)
         .post(`/api/gamification/assignments/${assignment.id}/mark-completed`)
-        .set(...getAuthHeader(volunteerToken))
+        .set('Authorization', `Bearer ${volunteerToken}`)
         .send({ notes: 'Test' });
 
       expect(response.status).toBe(400);

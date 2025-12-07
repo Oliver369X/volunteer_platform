@@ -25,4 +25,21 @@ router.post('/refresh', validate(schemas.refreshSchema), controller.refresh);
 router.post('/logout', authenticate(), validate(schemas.revokeSchema), controller.logout);
 router.get('/me', authenticate(), controller.me);
 
+// CU03: Recuperación de Credenciales
+router.post(
+  '/password/request-reset',
+  validate(schemas.passwordResetRequestSchema),
+  controller.requestPasswordReset,
+);
+router.get(
+  '/password/validate-token',
+  validate(schemas.validateResetTokenSchema, 'query'),
+  controller.validateResetToken,
+);
+router.post(
+  '/password/reset',
+  validate(schemas.resetPasswordSchema),
+  controller.resetPassword,
+);
+
 module.exports = router;

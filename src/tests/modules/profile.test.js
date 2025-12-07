@@ -60,7 +60,7 @@ describe('User Profile Management (Sprint 1)', () => {
     it('debería cambiar la contraseña correctamente', async () => {
       const response = await request(app)
         .patch('/api/users/me/password')
-        .set(...getAuthHeader(token))
+        .set('Authorization', `Bearer ${token}`)
         .send({
           currentPassword: 'OldPassword123!',
           newPassword: 'NewPassword123!',
@@ -80,7 +80,7 @@ describe('User Profile Management (Sprint 1)', () => {
     it('debería fallar con contraseña actual incorrecta', async () => {
       const response = await request(app)
         .patch('/api/users/me/password')
-        .set(...getAuthHeader(token))
+        .set('Authorization', `Bearer ${token}`)
         .send({
           currentPassword: 'WrongPassword!',
           newPassword: 'NewPassword123!',
@@ -93,7 +93,7 @@ describe('User Profile Management (Sprint 1)', () => {
     it('debería fallar si la nueva contraseña es muy corta', async () => {
       const response = await request(app)
         .patch('/api/users/me/password')
-        .set(...getAuthHeader(token))
+        .set('Authorization', `Bearer ${token}`)
         .send({
           currentPassword: 'OldPassword123!',
           newPassword: 'short',
@@ -127,7 +127,7 @@ describe('User Profile Management (Sprint 1)', () => {
 
       const response = await request(app)
         .post('/api/users/me/avatar')
-        .set(...getAuthHeader(token))
+        .set('Authorization', `Bearer ${token}`)
         .attach('avatar', testImageBuffer, 'test.png');
 
       expect(response.status).toBe(200);
@@ -138,7 +138,7 @@ describe('User Profile Management (Sprint 1)', () => {
     it('debería fallar sin archivo', async () => {
       const response = await request(app)
         .post('/api/users/me/avatar')
-        .set(...getAuthHeader(token));
+        .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(400);
     });

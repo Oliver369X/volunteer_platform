@@ -1,6 +1,7 @@
 'use strict';
 
 const authService = require('./auth.service');
+const passwordResetService = require('./password-reset.service');
 
 const registerVolunteer = async (req, res, next) => {
   try {
@@ -60,6 +61,35 @@ const me = async (req, res, next) => {
   }
 };
 
+// CU03: Recuperación de Credenciales
+const requestPasswordReset = async (req, res, next) => {
+  try {
+    const result = await passwordResetService.requestPasswordReset(req.body.email);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const validateResetToken = async (req, res, next) => {
+  try {
+    const result = await passwordResetService.validateResetToken(req.query.token);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const result = await passwordResetService.resetPassword(token, newPassword);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   registerVolunteer,
   registerOrganization,
@@ -67,6 +97,9 @@ module.exports = {
   refresh,
   logout,
   me,
+  requestPasswordReset,
+  validateResetToken,
+  resetPassword,
 };
 
 

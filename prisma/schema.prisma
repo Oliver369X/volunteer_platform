@@ -80,6 +80,56 @@ enum BlockchainStatus {
   FAILED
 }
 
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  PAST_DUE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum IncidentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BroadcastChannel {
+  EMAIL
+  PUSH
+  SMS
+  ALL
+}
+
 model User {
   id          String      @id @default(uuid())
   fullName    String      @db.VarChar(120)
@@ -99,10 +149,18 @@ model User {
   organizationsCreated    Organization[]
   organizationMemberships OrganizationMember[]
   tasksCreated            Task[]
-  volunteerAssignments    Assignment[] @relation("VolunteerAssignments")
-  assignmentsIssued       Assignment[] @relation("AssignmentsIssued")
+  eventsCreated           Event[]            @relation("EventsCreated")
+  eventCoordinations      EventCoordinator[]
+  volunteerAssignments    Assignment[]       @relation("VolunteerAssignments")
+  assignmentsIssued       Assignment[]       @relation("AssignmentsIssued")
   aiRecommendations       AiRecommendation[]
   auditLogs               AuditLog[]
+  passwordResets          PasswordReset[]
+  incidentsReported       Incident[]         @relation("IncidentsReported")
+  incidentsResolved       Incident[]         @relation("IncidentsResolved")
+  broadcastsSent          Broadcast[]
+  locationTrackings       LocationTracking[]
+  certificates            Certificate[]
 
   @@map("users")
 }
@@ -152,9 +210,14 @@ model Organization {
   creator            User                @relation(fields: [createdByUserId], references: [id])
   members            OrganizationMember[]
   tasks              Task[]
+  events             Event[]
   assignments        Assignment[]
   aiRecommendations  AiRecommendation[]
   auditLogs          AuditLog[]
+  subscription       Subscription?
+  payments           Payment[]
+  incidents          Incident[]
+  broadcasts         Broadcast[]
 
   @@map("organizations")
 }
@@ -179,6 +242,7 @@ model OrganizationMember {
 model Task {
   id              String       @id @default(uuid())
   organizationId  String
+  eventId         String?
   createdByUserId String
   title           String       @db.VarChar(180)
   description     String?
@@ -199,9 +263,12 @@ model Task {
 
   // Relations
   organization     Organization      @relation(fields: [organizationId], references: [id])
+  event            Event?            @relation("EventTasks", fields: [eventId], references: [id])
   creator          User              @relation(fields: [createdByUserId], references: [id])
   assignments      Assignment[]
   aiRecommendations AiRecommendation[]
+  incidents        Incident[]
+  locationTrackings LocationTracking[]
 
   @@map("tasks")
 }
@@ -341,6 +408,8 @@ model AuditLog {
   actorId      String?
   entityType   String?  @db.VarChar(60)
   entityId     String?
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?
   metadata     Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -351,4 +420,203 @@ model AuditLog {
   actor        User?        @relation(fields: [actorId], references: [id])
 
   @@map("audit_logs")
+}
+
+model Event {
+  id              String      @id @default(uuid())
+  organizationId  String
+  createdByUserId String
+  title           String      @db.VarChar(180)
+  description     String?
+  status          EventStatus @default(DRAFT)
+  locationName    String?     @db.VarChar(180)
+  latitude        Decimal?    @db.Decimal(10, 7)
+  longitude       Decimal?    @db.Decimal(10, 7)
+  startDate       DateTime?
+  endDate         DateTime?
+  coverImageUrl   String?     @db.VarChar(255)
+  metadata        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  creator         User        @relation("EventsCreated", fields: [createdByUserId], references: [id])
+  coordinators    EventCoordinator[]
+  tasks           Task[]      @relation("EventTasks")
+  broadcasts      Broadcast[]
+
+  @@map("events")
+}
+
+model EventCoordinator {
+  id         String    @id @default(uuid())
+  eventId    String
+  userId     String
+  assignedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  // Relations
+  event      Event     @relation(fields: [eventId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@map("event_coordinators")
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  organizationId String             @unique
+  plan           SubscriptionPlan   @default(FREE)
+  status         SubscriptionStatus @default(INACTIVE)
+  stripeCustomerId String?          @unique @db.VarChar(255)
+  stripeSubscriptionId String?      @unique @db.VarChar(255)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean        @default(false)
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  payments       Payment[]
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  subscriptionId   String
+  organizationId   String
+  stripePaymentIntentId String? @unique @db.VarChar(255)
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String        @db.VarChar(10)
+  status           PaymentStatus @default(PENDING)
+  paidAt           DateTime?
+  metadata         Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  subscription     Subscription  @relation(fields: [subscriptionId], references: [id])
+  organization     Organization  @relation(fields: [organizationId], references: [id])
+
+  @@map("payments")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("password_resets")
+}
+
+model Incident {
+  id             String           @id @default(uuid())
+  reporterId     String
+  taskId         String?
+  organizationId String?
+  category       String           @db.VarChar(80)
+  priority       IncidentPriority @default(MEDIUM)
+  status         IncidentStatus   @default(OPEN)
+  title          String           @db.VarChar(180)
+  description    String?
+  evidenceUrls   String[]
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  reporter       User         @relation("IncidentsReported", fields: [reporterId], references: [id])
+  task           Task?        @relation(fields: [taskId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  resolver       User?        @relation("IncidentsResolved", fields: [resolvedById], references: [id])
+
+  @@map("incidents")
+}
+
+model Broadcast {
+  id             String           @id @default(uuid())
+  eventId        String?
+  organizationId String
+  sentByUserId   String
+  channel        BroadcastChannel
+  subject        String           @db.VarChar(255)
+  message        String
+  recipientCount Int              @default(0)
+  sentAt         DateTime?
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  event          Event?        @relation(fields: [eventId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  sentBy         User          @relation(fields: [sentByUserId], references: [id])
+
+  @@map("broadcasts")
+}
+
+model LocationTracking {
+  id           String   @id @default(uuid())
+  volunteerId  String
+  taskId       String?
+  latitude     Decimal  @db.Decimal(10, 7)
+  longitude    Decimal  @db.Decimal(10, 7)
+  accuracy     Float?
+  recordedAt   DateTime @default(now())
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  volunteer    User     @relation(fields: [volunteerId], references: [id])
+  task         Task?    @relation(fields: [taskId], references: [id])
+
+  @@index([volunteerId, recordedAt])
+  @@map("location_trackings")
+}
+
+model Certificate {
+  id               String           @id @default(uuid())
+  volunteerId      String
+  assignmentId     String?
+  eventId          String?
+  certificateType  String           @db.VarChar(80)
+  title            String           @db.VarChar(180)
+  description      String?
+  issuerName       String           @db.VarChar(150)
+  issuedAt         DateTime         @default(now())
+  nftTokenId       String?          @unique @db.VarChar(160)
+  blockchainStatus BlockchainStatus @default(PENDING)
+  certificateUrl   String?          @db.VarChar(255)
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  volunteer        User         @relation(fields: [volunteerId], references: [id])
+
+  @@map("certificates")
 }

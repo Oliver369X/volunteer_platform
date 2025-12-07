@@ -18,13 +18,21 @@ const createTestToken = (user = createTestUser()) => {
   });
 };
 
-const getAuthHeader = (token) => ({
-  Authorization: `Bearer ${token}`,
-});
+const getAuthHeader = (token) => {
+  return {
+    'Authorization': `Bearer ${token}`,
+  };
+};
+
+// Helper para usar con supertest .set()
+const setAuthHeader = (request, token) => {
+  return request.set('Authorization', `Bearer ${token}`);
+};
 
 module.exports = {
   createTestUser,
   createTestToken,
   getAuthHeader,
+  setAuthHeader,
 };
 

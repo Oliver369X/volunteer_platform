@@ -327,7 +327,7 @@ const getVolunteerGamification = async (userId) => {
     throw new NotFoundError('Perfil de voluntario no encontrado');
   }
 
-  const [transactions, badges] = await Promise.all([
+  const [transactions, badges, certificates] = await Promise.all([
     prisma.pointTransaction.findMany({
       where: { volunteerProfileId: profile.id },
       orderBy: { createdAt: 'desc' },
@@ -341,12 +341,46 @@ const getVolunteerGamification = async (userId) => {
       orderBy: { createdAt: 'desc' },
       // No limitar, mostrar todos los badges del voluntario
     }),
+    prisma.certificate.findMany({
+      where: {
+        volunteerId: userId,
+        deletedAt: null,
+      },
+      orderBy: { issuedAt: 'desc' },
+    }),
   ]);
 
-  return {
-    profile,
-    transactions,
-    badges: badges.map((award) => ({
+  // Convertir certificados a formato compatible con badges para mostrar en el frontend
+  const certificatesAsBadges = certificates.map((cert) => ({
+    id: cert.id,
+    tokenId: cert.nftTokenId,
+    blockchainStatus: cert.blockchainStatus,
+    metadata: cert.metadata,
+    earnedAt: cert.issuedAt,
+    createdAt: cert.createdAt,
+    awardedAt: cert.issuedAt,
+    badge: {
+      id: cert.id,
+      code: `CERT_${cert.certificateType}`,
+      name: cert.title,
+      description: cert.description || `Certificado emitido por ${cert.issuerName}`,
+      level: 'ESPECIAL',
+      category: 'CERTIFICATE',
+      iconUrl: null,
+    },
+    // Propiedades directas para compatibilidad
+    name: cert.title,
+    description: cert.description || `Certificado emitido por ${cert.issuerName}`,
+    level: 'ESPECIAL',
+    iconUrl: null,
+    certificateType: cert.certificateType,
+    issuerName: cert.issuerName,
+    certificateUrl: cert.certificateUrl,
+  }));
+
+  // Combinar badges y certificados
+  const allBadges = [
+    ...badges.map((award) => ({
       id: award.id,
       tokenId: award.tokenId,
       blockchainStatus: award.blockchainStatus,
@@ -369,6 +403,14 @@ const getVolunteerGamification = async (userId) => {
       level: award.badge.level,
       iconUrl: award.badge.iconUrl,
     })),
+    ...certificatesAsBadges,
+  ];
+
+  return {
+    profile,
+    transactions,
+    badges: allBadges,
+    certificates: certificates, // También incluir certificados por separado
   };
 };
 

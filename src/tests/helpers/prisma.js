@@ -41,21 +41,28 @@ const cleanup = async () => {
     // Verificar conexión primero
     await prismaInstance.$connect();
     
-    // Eliminar datos en orden inverso de dependencias usando transacciones
-    await prismaInstance.$transaction([
-      prismaInstance.aiRecommendation.deleteMany(),
-      prismaInstance.auditLog.deleteMany(),
-      prismaInstance.pointTransaction.deleteMany(),
-      prismaInstance.volunteerBadge.deleteMany(),
-      prismaInstance.assignment.deleteMany(),
-      prismaInstance.task.deleteMany(),
-      prismaInstance.organizationMember.deleteMany(),
-      prismaInstance.organization.deleteMany(),
-      prismaInstance.refreshToken.deleteMany(),
-      prismaInstance.volunteerProfile.deleteMany(),
-      prismaInstance.badge.deleteMany(),
-      prismaInstance.user.deleteMany(),
-    ]);
+    // Eliminar datos en orden inverso de dependencias
+    await prismaInstance.locationTracking.deleteMany({});
+    await prismaInstance.certificate.deleteMany({});
+    await prismaInstance.broadcast.deleteMany({});
+    await prismaInstance.incident.deleteMany({});
+    await prismaInstance.payment.deleteMany({});
+    await prismaInstance.subscription.deleteMany({});
+    await prismaInstance.eventCoordinator.deleteMany({});
+    await prismaInstance.passwordReset.deleteMany({});
+    await prismaInstance.aiRecommendation.deleteMany({});
+    await prismaInstance.auditLog.deleteMany({});
+    await prismaInstance.pointTransaction.deleteMany({});
+    await prismaInstance.volunteerBadge.deleteMany({});
+    await prismaInstance.assignment.deleteMany({});
+    await prismaInstance.task.deleteMany({});
+    await prismaInstance.event.deleteMany({});
+    await prismaInstance.organizationMember.deleteMany({});
+    await prismaInstance.organization.deleteMany({});
+    await prismaInstance.refreshToken.deleteMany({});
+    await prismaInstance.volunteerProfile.deleteMany({});
+    await prismaInstance.badge.deleteMany({});
+    await prismaInstance.user.deleteMany({});
   } catch (error) {
     // Si hay error de autenticación, es porque la BD no está disponible
     if (error.code === 'P1000' || error.code === 'P1001') {

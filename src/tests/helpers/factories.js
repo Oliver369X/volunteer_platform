@@ -58,11 +58,91 @@ const createAssignmentData = (taskId, volunteerId, organizationId, overrides = {
   ...overrides,
 });
 
+// Helper para crear usuario completo en BD
+const createTestUser = async (prisma, overrides = {}) => {
+  const userData = createUserData(overrides);
+  const user = await prisma.user.create({
+    data: {
+      ...userData,
+      passwordHash: '$2a$10$dummyHashForTests',
+    },
+  });
+
+  if (user.role === 'VOLUNTEER') {
+    await prisma.volunteerProfile.create({
+      data: createVolunteerProfileData(user.id),
+    });
+  }
+
+  return user;
+};
+
+// Helper para crear organización completa
+const createTestOrganization = async (prisma) => {
+  const user = await createTestUser(prisma, { role: 'ORGANIZATION' });
+  
+  const org = await prisma.organization.create({
+    data: createOrganizationData(user.id),
+  });
+
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+    },
+  });
+
+  return {
+    ...org,
+    userId: user.id,
+  };
+};
+
+// Helper para crear tarea
+const createTestTask = async (prisma, overrides = {}) => {
+  const org = await createTestOrganization(prisma);
+  
+  const task = await prisma.task.create({
+    data: createTaskData(org.id, org.userId, overrides),
+  });
+
+  return { ...task, organizationId: org.id };
+};
+
+// Cleanup helper
+const cleanupTestData = async (prisma) => {
+  // Limpiar en orden correcto por foreign keys
+  await prisma.locationTracking.deleteMany({});
+  await prisma.certificate.deleteMany({});
+  await prisma.broadcast.deleteMany({});
+  await prisma.incident.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.subscription.deleteMany({});
+  await prisma.eventCoordinator.deleteMany({});
+  await prisma.passwordReset.deleteMany({});
+  await prisma.volunteerBadge.deleteMany({});
+  await prisma.pointTransaction.deleteMany({});
+  await prisma.assignment.deleteMany({});
+  await prisma.aiRecommendation.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.event.deleteMany({});
+  await prisma.organizationMember.deleteMany({});
+  await prisma.organization.deleteMany({});
+  await prisma.volunteerProfile.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.user.deleteMany({});
+};
+
 module.exports = {
   createUserData,
   createVolunteerProfileData,
   createOrganizationData,
   createTaskData,
   createAssignmentData,
+  createTestUser,
+  createTestOrganization,
+  createTestTask,
+  cleanupTestData,
 };
 

@@ -166,6 +166,151 @@ const mintBadge = async ({ volunteerBadge, badge, volunteer }) => {
   }
 };
 
+/**
+ * Mintea un certificado NFT (para certificados digitales)
+ */
+const mintNFT = async ({ certificateId, recipientAddress, metadata }) => {
+  const config = loadEnv();
+  if (!config.analytics.enableMockBlockchain) {
+    logger.info('Simulador blockchain deshabilitado');
+    return {
+      tokenId: `mock-cert-${certificateId}`,
+      url: `https://lacausa.org/certificates/${certificateId}`,
+    };
+  }
+
+  try {
+    let tokenId = `mock-cert-${certificateId}-${uuidv4()}`;
+    let ipfsMetadata = null;
+    let gatewayUrl = null;
+
+    // Crear metadata del certificado NFT
+    const nftMetadata = {
+      name: metadata.title || metadata.certificateType || 'Certificado Digital',
+      description: metadata.description || `Certificado emitido por ${metadata.issuerName || 'Plataforma de Voluntariado'}`,
+      image: metadata.image || 'https://via.placeholder.com/512x512?text=Certificado',
+      external_url: `https://lacausa.org/certificates/${certificateId}`,
+      attributes: [
+        {
+          trait_type: 'Certificate Type',
+          value: metadata.certificateType || 'TASK_COMPLETION',
+        },
+        {
+          trait_type: 'Issuer',
+          value: metadata.issuerName || 'Plataforma de Voluntariado',
+        },
+        {
+          trait_type: 'Volunteer Name',
+          value: metadata.volunteerName || 'Voluntario',
+        },
+        {
+          trait_type: 'Task Title',
+          value: metadata.taskTitle || 'Tarea Completada',
+        },
+        {
+          trait_type: 'Completed At',
+          value: metadata.completedAt || new Date().toISOString(),
+        },
+        {
+          trait_type: 'Rating',
+          value: metadata.rating || 0,
+        },
+        {
+          trait_type: 'Minted At',
+          value: new Date().toISOString(),
+        },
+      ],
+    };
+
+    // 📤 Subir metadata del certificado a IPFS con Pinata
+    if (process.env.PINATA_JWT) {
+      try {
+        logger.info('📤 Subiendo metadata del certificado NFT a IPFS/Pinata...', {
+          certificateId,
+        });
+
+        const result = await pinataClient.pinJSON(
+          nftMetadata,
+          `certificate-${certificateId}-${Date.now()}`,
+        );
+
+        if (result) {
+          ipfsMetadata = {
+            ipfsHash: result.ipfsHash,
+            gatewayUrl: result.gatewayUrl,
+            timestamp: result.timestamp,
+          };
+          tokenId = `nft-${result.ipfsHash}`;
+          gatewayUrl = result.gatewayUrl;
+          logger.info('✅ Certificado metadata subido a IPFS', {
+            ipfsHash: result.ipfsHash,
+            gatewayUrl: result.gatewayUrl,
+            certificateId,
+          });
+        }
+      } catch (error) {
+        logger.warn('⚠️ Error al subir certificado a Pinata, usando tokenId mock', {
+          error: error.message,
+          certificateId,
+        });
+      }
+    } else {
+      logger.warn('⚠️ Pinata JWT no configurado, usando modo mock para certificado');
+    }
+
+    return {
+      tokenId,
+      url: gatewayUrl || `https://lacausa.org/certificates/${certificateId}`,
+      ipfsHash: ipfsMetadata?.ipfsHash,
+      gatewayUrl: ipfsMetadata?.gatewayUrl,
+    };
+  } catch (error) {
+    logger.error('Error al mintear certificado NFT', {
+      error: error.message,
+      certificateId,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Verifica un NFT por su tokenId
+ */
+const verifyNFT = async (tokenId) => {
+  const config = loadEnv();
+  if (!config.analytics.enableMockBlockchain) {
+    return true; // En modo mock siempre válido
+  }
+
+  try {
+    // Si es un tokenId de Pinata (empieza con nft-), verificar en IPFS
+    if (tokenId.startsWith('nft-')) {
+      const ipfsHash = tokenId.replace('nft-', '');
+      // Intentar acceder al gateway para verificar que existe
+      const gatewayUrl = process.env.PINATA_GATEWAY
+        ? `https://${process.env.PINATA_GATEWAY}/ipfs/${ipfsHash}?pinataGatewayToken=${process.env.PINATA_GATEWAY_KEY}`
+        : `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+
+      try {
+        const axios = require('axios');
+        await axios.head(gatewayUrl, { timeout: 5000 });
+        return true;
+      } catch (error) {
+        logger.warn('NFT no encontrado en IPFS', { tokenId, ipfsHash });
+        return false;
+      }
+    }
+
+    // Para tokens mock, siempre válidos
+    return tokenId.startsWith('mock-');
+  } catch (error) {
+    logger.error('Error al verificar NFT', { error: error.message, tokenId });
+    return false;
+  }
+};
+
 module.exports = {
   mintBadge,
+  mintNFT,
+  verifyNFT,
 };

@@ -24,6 +24,21 @@ router.get(
   controller.getVolunteerKpis,
 );
 
+// Exportar PDFs
+router.get(
+  '/organization/export',
+  authorizeRoles('ADMIN', 'ORGANIZATION'),
+  validate(schemas.organizationDashboardSchema, 'query'),
+  controller.exportOrganizationReportPDF,
+);
+
+router.get(
+  '/volunteer/export',
+  authorizeRoles('VOLUNTEER', 'ADMIN'),
+  validate(schemas.volunteerKpiSchema, 'query'),
+  controller.exportVolunteerReportPDF,
+);
+
 module.exports = router;
 
 

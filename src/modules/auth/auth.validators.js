@@ -46,12 +46,38 @@ const revokeSchema = Joi.object({
   refreshTokenId: Joi.string().pattern(uuidRegex).required(),
 });
 
+const passwordResetRequestSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.email': 'El correo electrónico debe ser válido',
+    'any.required': 'El correo electrónico es requerido',
+  }),
+});
+
+const validateResetTokenSchema = Joi.object({
+  token: Joi.string().required().messages({
+    'any.required': 'El token es requerido',
+  }),
+});
+
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().required().messages({
+    'any.required': 'El token es requerido',
+  }),
+  newPassword: Joi.string().min(8).required().messages({
+    'string.min': 'La contraseña debe tener al menos 8 caracteres',
+    'any.required': 'La nueva contraseña es requerida',
+  }),
+});
+
 module.exports = {
   volunteerRegisterSchema,
   organizationRegisterSchema,
   loginSchema,
   refreshSchema,
   revokeSchema,
+  passwordResetRequestSchema,
+  validateResetTokenSchema,
+  resetPasswordSchema,
 };
 
 

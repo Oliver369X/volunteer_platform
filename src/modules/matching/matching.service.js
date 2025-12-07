@@ -283,6 +283,75 @@ const runMatching = async (taskId, { autoAssign, limit }, requester) => {
   return result;
 };
 
+/**
+ * CU14: Cálculo Predictivo de Personal (IA)
+ * Calcula la cantidad óptima de voluntarios necesarios para un evento
+ */
+const predictStaffing = async (payload, requester) => {
+  const { eventType, expectedAttendees, duration, complexity } = payload;
+
+  // Factores base por tipo de evento
+  const eventTypeMultipliers = {
+    SOCIAL: 0.02,        // 2% de asistentes
+    ENVIRONMENTAL: 0.03, // 3% de asistentes
+    EDUCATIONAL: 0.025,  // 2.5% de asistentes
+    HEALTH: 0.04,        // 4% de asistentes (más personalizado)
+    EMERGENCY: 0.05,     // 5% de asistentes (crítico)
+    LOGISTICS: 0.03,    // 3% de asistentes
+  };
+
+  // Factores de complejidad
+  const complexityMultipliers = {
+    LOW: 0.8,
+    MEDIUM: 1.0,
+    HIGH: 1.3,
+  };
+
+  // Factor de duración (más horas = más rotación)
+  const durationFactor = Math.min(1 + (duration - 1) * 0.1, 1.5);
+
+  // Cálculo base
+  const baseVolunteers = Math.ceil(expectedAttendees * eventTypeMultipliers[eventType]);
+  const complexityAdjustment = complexityMultipliers[complexity];
+  const durationAdjustment = durationFactor;
+
+  const recommendedVolunteers = Math.ceil(
+    baseVolunteers * complexityAdjustment * durationAdjustment
+  );
+
+  // Rango de variación (±20%)
+  const minVolunteers = Math.max(1, Math.floor(recommendedVolunteers * 0.8));
+  const maxVolunteers = Math.ceil(recommendedVolunteers * 1.2);
+
+  // Distribución por rol sugerida (ejemplo)
+  const breakdown = {
+    Coordinadores: Math.max(1, Math.ceil(recommendedVolunteers * 0.1)),
+    Operativos: Math.ceil(recommendedVolunteers * 0.6),
+    Apoyo: Math.ceil(recommendedVolunteers * 0.3),
+  };
+
+  // Razonamiento de la IA
+  const reasoning = `Para un evento ${eventType.toLowerCase()} con ${expectedAttendees} asistentes esperados y duración de ${duration} horas, se recomiendan ${recommendedVolunteers} voluntarios. La complejidad ${complexity.toLowerCase()} y la duración del evento fueron factores clave en este cálculo.`;
+
+  return {
+    recommendedVolunteers,
+    minVolunteers,
+    maxVolunteers,
+    breakdown,
+    reasoning,
+    factors: {
+      eventType,
+      expectedAttendees,
+      duration,
+      complexity,
+      baseCalculation: baseVolunteers,
+      complexityMultiplier: complexityAdjustment,
+      durationMultiplier: durationAdjustment,
+    },
+  };
+};
+
 module.exports = {
   runMatching,
+  predictStaffing,
 };

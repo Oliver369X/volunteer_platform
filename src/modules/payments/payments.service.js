@@ -19,7 +19,7 @@ try {
 }
 
 /**
- * Planes disponibles
+ * Planes disponibles (actualizados para coincidir con la landing page)
  */
 const PLANS = {
   FREE: {
@@ -34,26 +34,29 @@ const PLANS = {
   },
   BASIC: {
     name: 'Basic',
-    price: 29,
+    price: 49,
     // Usar variable de entorno o placeholder
     priceId: process.env.STRIPE_PRICE_BASIC || 'price_basic_monthly',
     features: {
-      maxEvents: 10,
-      maxTasksPerEvent: 50,
+      maxVolunteers: 50,
+      maxTasks: 10,
       aiMatching: true,
-      analytics: true,
+      analytics: 'basic',
+      gpsTracking: false,
     },
   },
-  PROFESSIONAL: {
-    name: 'Professional',
+  PREMIUM: {
+    name: 'Premium',
     price: 99,
-    priceId: process.env.STRIPE_PRICE_PROFESSIONAL || 'price_professional_monthly',
+    priceId: process.env.STRIPE_PRICE_PREMIUM || 'price_premium_monthly',
     features: {
-      maxEvents: -1, // Ilimitado
-      maxTasksPerEvent: -1,
+      maxVolunteers: -1, // Ilimitado
+      maxTasks: -1, // Ilimitado
       aiMatching: true,
-      analytics: true,
-      predictiveAI: true,
+      analytics: 'advanced',
+      gpsTracking: true,
+      customAPI: true,
+      prioritySupport: true,
     },
   },
   ENTERPRISE: {
@@ -61,14 +64,20 @@ const PLANS = {
     price: 299,
     priceId: process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise_monthly',
     features: {
-      maxEvents: -1,
-      maxTasksPerEvent: -1,
+      maxVolunteers: -1, // Ilimitado
+      maxTasks: -1, // Ilimitado
       aiMatching: true,
-      analytics: true,
-      predictiveAI: true,
-      dedicatedSupport: true,
+      analytics: 'advanced',
+      gpsTracking: true,
+      customAPI: true,
+      prioritySupport: true,
+      dedicatedAccountManager: true,
       customIntegrations: true,
+      slaGuaranteed: true,
+      strategicConsulting: true,
     },
+    // Solo para usuarios autorizados
+    authorizedEmails: ['oliver679801@gmail.com'],
   },
 };
 

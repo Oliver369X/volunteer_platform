@@ -78,8 +78,13 @@ const createTestUser = async (prisma, overrides = {}) => {
 };
 
 // Helper para crear organización completa
-const createTestOrganization = async (prisma) => {
-  const user = await createTestUser(prisma, { role: 'ORGANIZATION' });
+const createTestOrganization = async (prisma, customEmail = null) => {
+  const userOverrides = { role: 'ORGANIZATION' };
+  if (customEmail) {
+    userOverrides.email = customEmail;
+  }
+  
+  const user = await createTestUser(prisma, userOverrides);
   
   const org = await prisma.organization.create({
     data: createOrganizationData(user.id),
@@ -96,6 +101,7 @@ const createTestOrganization = async (prisma) => {
   return {
     ...org,
     userId: user.id,
+    userEmail: user.email,
   };
 };
 

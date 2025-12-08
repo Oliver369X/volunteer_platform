@@ -17,8 +17,10 @@ const corsOptions = {
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:5174',
-    'https://urchin-app-w4fo2.ondigitalocean.app',  // Frontend en producción
-    'https://dolphin-app-vz5up.ondigitalocean.app',  // Backend en producción
+    'https://urchin-app-w4fo2.ondigitalocean.app',  // Frontend en producción (antiguo)
+    'https://starfish-app-3fwtw.ondigitalocean.app', // Frontend en producción (actual)
+    'https://dolphin-app-vz5up.ondigitalocean.app',  // Backend en producción (antiguo)
+    'https://dolphin-app-4ehoz.ondigitalocean.app',  // Backend en producción (actual)
     process.env.FRONTEND_URL, // Variable de entorno
   ].filter(Boolean), // Filtrar undefined
   credentials: true,

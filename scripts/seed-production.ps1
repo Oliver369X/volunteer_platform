@@ -1,14 +1,41 @@
 # Script para poblar la base de datos de producción
 # Uso: .\scripts\seed-production.ps1
+# IMPORTANTE: Configura DATABASE_URL en tu archivo .env.production antes de ejecutar
 
 Write-Host "🌱 Iniciando seed de producción..." -ForegroundColor Green
 
-# Configurar variables de entorno para producción
-$env:DATABASE_URL = "postgresql://dev-db-263476:AVNS_lLuJLivU8ISUL9_Pg9C@app-a5f9e579-1b85-4e67-827a-507b902e828d-do-user-28219899-0.k.db.ondigitalocean.com:25060/dev-db-263476?sslmode=require"
+# Cargar variables de entorno desde .env.production si existe
+if (Test-Path ".env.production") {
+    Get-Content ".env.production" | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]*)=(.*)$') {
+            $name = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            [Environment]::SetEnvironmentVariable($name, $value, "Process")
+        }
+    }
+    Write-Host "✅ Variables cargadas desde .env.production" -ForegroundColor Green
+}
+
+# Verificar que DATABASE_URL esté configurada
+if (-not $env:DATABASE_URL) {
+    Write-Host "❌ Error: DATABASE_URL no está configurada" -ForegroundColor Red
+    Write-Host "   Crea un archivo .env.production con DATABASE_URL o configúrala como variable de entorno" -ForegroundColor Yellow
+    Write-Host "   Ver env.production.example para el formato" -ForegroundColor Gray
+    exit 1
+}
 
 Write-Host "📦 Conectando a base de datos de producción..." -ForegroundColor Yellow
-Write-Host "   Host: app-a5f9e579-1b85-4e67-827a-507b902e828d-do-user-28219899-0.k.db.ondigitalocean.com" -ForegroundColor Gray
-Write-Host "   Database: dev-db-263476" -ForegroundColor Gray
+# No mostrar la URL completa por seguridad
+try {
+    $dbParts = $env:DATABASE_URL -split '@'
+    if ($dbParts.Length -gt 1) {
+        $hostPart = ($dbParts[1] -split '/')[0] -split ':'
+        $dbHost = $hostPart[0]
+        Write-Host "   Host: $dbHost" -ForegroundColor Gray
+    }
+} catch {
+    Write-Host "   Conectando..." -ForegroundColor Gray
+}
 
 # Ejecutar seed
 Write-Host "`n🚀 Ejecutando seed..." -ForegroundColor Cyan

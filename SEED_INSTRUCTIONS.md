@@ -17,24 +17,43 @@ Esto creará:
 
 ## Producción (DigitalOcean)
 
-### Opción 1: Usando el script PowerShell
+⚠️ **IMPORTANTE:** Las credenciales de producción NO deben estar en el código. Usa variables de entorno.
+
+### Opción 1: Usando el script PowerShell (Recomendado)
+
+1. Crea un archivo `.env.production` en la raíz del proyecto `server/`:
+
+```bash
+# Copia el archivo de ejemplo
+cp env.production.example .env.production
+```
+
+2. Edita `.env.production` y agrega tu `DATABASE_URL` real:
+
+```env
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
+```
+
+3. Ejecuta el script:
 
 ```powershell
 .\scripts\seed-production.ps1
 ```
+
+El script cargará automáticamente las variables desde `.env.production`.
 
 ### Opción 2: Manualmente
 
 1. Configurar la variable de entorno:
 
 ```powershell
-$env:DATABASE_URL = "postgresql://dev-db-263476:AVNS_lLuJLivU8ISUL9_Pg9C@app-a5f9e579-1b85-4e67-827a-507b902e828d-do-user-28219899-0.k.db.ondigitalocean.com:25060/dev-db-263476?sslmode=require"
+$env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
 ```
 
 2. Ejecutar el seed:
 
 ```bash
-npm run seed:prod
+npm run db:seed:prod
 # o
 node prisma/seed-production.js
 ```

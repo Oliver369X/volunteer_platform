@@ -13,10 +13,12 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:reset": "prisma migrate reset",
+    "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
-    "db:seed:complete": "node prisma/seed-complete.js"
+    "db:seed:complete": "node prisma/seed-complete.js",
+    "seed": "node prisma/seed.js"
   },
   "keywords": [
     "voluntariado",

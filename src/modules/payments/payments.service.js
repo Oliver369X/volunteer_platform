@@ -34,29 +34,26 @@ const PLANS = {
   },
   BASIC: {
     name: 'Basic',
-    price: 49,
+    price: 29,
     // Usar variable de entorno o placeholder
     priceId: process.env.STRIPE_PRICE_BASIC || 'price_basic_monthly',
     features: {
-      maxVolunteers: 50,
-      maxTasks: 10,
+      maxEvents: 10,
+      maxTasksPerEvent: 50,
       aiMatching: true,
-      analytics: 'basic',
-      gpsTracking: false,
+      analytics: true,
     },
   },
-  PREMIUM: {
-    name: 'Premium',
+  PROFESSIONAL: {
+    name: 'Professional',
     price: 99,
-    priceId: process.env.STRIPE_PRICE_PREMIUM || 'price_premium_monthly',
+    priceId: process.env.STRIPE_PRICE_PROFESSIONAL || 'price_professional_monthly',
     features: {
-      maxVolunteers: -1, // Ilimitado
-      maxTasks: -1, // Ilimitado
+      maxEvents: -1, // Ilimitado
+      maxTasksPerEvent: -1,
       aiMatching: true,
-      analytics: 'advanced',
-      gpsTracking: true,
-      customAPI: true,
-      prioritySupport: true,
+      analytics: true,
+      predictiveAI: true,
     },
   },
   ENTERPRISE: {
@@ -64,17 +61,13 @@ const PLANS = {
     price: 299,
     priceId: process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise_monthly',
     features: {
-      maxVolunteers: -1, // Ilimitado
-      maxTasks: -1, // Ilimitado
+      maxEvents: -1,
+      maxTasksPerEvent: -1,
       aiMatching: true,
-      analytics: 'advanced',
-      gpsTracking: true,
-      customAPI: true,
-      prioritySupport: true,
-      dedicatedAccountManager: true,
+      analytics: true,
+      predictiveAI: true,
+      dedicatedSupport: true,
       customIntegrations: true,
-      slaGuaranteed: true,
-      strategicConsulting: true,
     },
     // Solo para usuarios autorizados
     authorizedEmails: ['oliver679801@gmail.com'],

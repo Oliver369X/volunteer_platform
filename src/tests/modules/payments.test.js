@@ -123,15 +123,14 @@ describe('Payments Module - CU17', () => {
 
       expect(PLANS.FREE.price).toBe(0);
       expect(PLANS.FREE.features.maxEvents).toBe(1);
-      expect(PLANS.BASIC.price).toBe(49);
-      expect(PLANS.BASIC.features.maxVolunteers).toBe(50);
+      expect(PLANS.BASIC.price).toBe(29);
+      expect(PLANS.BASIC.features.maxEvents).toBe(10);
       expect(PLANS.BASIC.features.aiMatching).toBe(true);
-      expect(PLANS.PREMIUM.price).toBe(99);
-      expect(PLANS.PREMIUM.features.maxVolunteers).toBe(-1); // Ilimitado
-      expect(PLANS.PREMIUM.features.gpsTracking).toBe(true);
-      expect(PLANS.PREMIUM.features.prioritySupport).toBe(true);
+      expect(PLANS.PROFESSIONAL.price).toBe(99);
+      expect(PLANS.PROFESSIONAL.features.maxEvents).toBe(-1); // Ilimitado
+      expect(PLANS.PROFESSIONAL.features.predictiveAI).toBe(true);
       expect(PLANS.ENTERPRISE.price).toBe(299);
-      expect(PLANS.ENTERPRISE.features.dedicatedAccountManager).toBe(true);
+      expect(PLANS.ENTERPRISE.features.dedicatedSupport).toBe(true);
       expect(PLANS.ENTERPRISE.features.customIntegrations).toBe(true);
       expect(PLANS.ENTERPRISE.authorizedEmails).toContain('oliver679801@gmail.com');
     });
@@ -272,8 +271,8 @@ describe('Payments Module - CU17', () => {
 
       // Verificar que los precios coinciden con la landing page
       expect(PLANS.FREE.price).toBe(0);
-      expect(PLANS.BASIC.price).toBe(49);
-      expect(PLANS.PREMIUM.price).toBe(99);
+      expect(PLANS.BASIC.price).toBe(29);
+      expect(PLANS.PROFESSIONAL.price).toBe(99);
       expect(PLANS.ENTERPRISE.price).toBe(299);
     });
 
@@ -286,21 +285,19 @@ describe('Payments Module - CU17', () => {
       expect(PLANS.FREE.features.aiMatching).toBe(false);
 
       // BASIC: para organizaciones pequeñas
-      expect(PLANS.BASIC.features.maxVolunteers).toBe(50);
-      expect(PLANS.BASIC.features.maxTasks).toBe(10);
+      expect(PLANS.BASIC.features.maxEvents).toBe(10);
+      expect(PLANS.BASIC.features.maxTasksPerEvent).toBe(50);
       expect(PLANS.BASIC.features.aiMatching).toBe(true);
 
-      // PREMIUM: ilimitado
-      expect(PLANS.PREMIUM.features.maxVolunteers).toBe(-1);
-      expect(PLANS.PREMIUM.features.maxTasks).toBe(-1);
-      expect(PLANS.PREMIUM.features.gpsTracking).toBe(true);
-      expect(PLANS.PREMIUM.features.customAPI).toBe(true);
+      // PROFESSIONAL: ilimitado
+      expect(PLANS.PROFESSIONAL.features.maxEvents).toBe(-1);
+      expect(PLANS.PROFESSIONAL.features.maxTasksPerEvent).toBe(-1);
+      expect(PLANS.PROFESSIONAL.features.predictiveAI).toBe(true);
 
-      // ENTERPRISE: todo premium + soporte dedicado
-      expect(PLANS.ENTERPRISE.features.maxVolunteers).toBe(-1);
-      expect(PLANS.ENTERPRISE.features.dedicatedAccountManager).toBe(true);
+      // ENTERPRISE: todo professional + soporte dedicado
+      expect(PLANS.ENTERPRISE.features.maxEvents).toBe(-1);
+      expect(PLANS.ENTERPRISE.features.dedicatedSupport).toBe(true);
       expect(PLANS.ENTERPRISE.features.customIntegrations).toBe(true);
-      expect(PLANS.ENTERPRISE.features.slaGuaranteed).toBe(true);
     });
   });
 });

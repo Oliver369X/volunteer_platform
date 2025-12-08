@@ -29,6 +29,19 @@ const cancelSubscription = async (req, res, next) => {
   }
 };
 
+const verifyCheckoutSession = async (req, res, next) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ status: 'error', message: 'sessionId es requerido' });
+    }
+    const result = await paymentsService.verifyCheckoutSession(req.user.id, sessionId);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const handleWebhook = async (req, res, next) => {
   try {
     const signature = req.headers['stripe-signature'];
@@ -42,6 +55,7 @@ const handleWebhook = async (req, res, next) => {
 module.exports = {
   getCurrentSubscription,
   createCheckoutSession,
+  verifyCheckoutSession,
   cancelSubscription,
   handleWebhook,
 };

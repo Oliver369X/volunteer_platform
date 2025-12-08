@@ -15,6 +15,7 @@ const start = async () => {
     await connectDatabase();
     server.listen(config.app.port, () => {
       logger.info(`API escuchando en el puerto ${config.app.port}`);
+      logger.info('✅ Servidor reiniciado - Stripe demo y miembros actualizados');
     });
   } catch (error) {
     logger.error('Error al iniciar la aplicación', { error });

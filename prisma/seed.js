@@ -9,17 +9,26 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Sembrando datos iniciales...\n');
 
-  // Limpiar datos existentes
+  // Limpiar datos existentes (orden correcto para evitar foreign key constraints)
   console.log('Limpiando datos existentes...');
   await prisma.volunteerBadge.deleteMany();
   await prisma.pointTransaction.deleteMany();
   await prisma.aiRecommendation.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.assignment.deleteMany();
+  await prisma.locationTracking.deleteMany();
+  await prisma.certificate.deleteMany();
+  await prisma.broadcast.deleteMany();
+  await prisma.incident.deleteMany();
+  await prisma.eventCoordinator.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.event.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.payment.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.refreshToken.deleteMany();
+  await prisma.passwordReset.deleteMany();
   await prisma.volunteerProfile.deleteMany();
   await prisma.badge.deleteMany();
   await prisma.user.deleteMany();
@@ -78,25 +87,25 @@ async function main() {
   
   const orgUser1 = await prisma.user.create({
     data: {
-      fullName: 'María González',
-      email: 'maria@cruzroja.org',
-      passwordHash: await bcrypt.hash('Password123!', 10),
+      fullName: 'Admin Organización',
+      email: 'admin@admin.com',
+      passwordHash: await bcrypt.hash('12345678', 10),
       role: 'ORGANIZATION',
       status: 'ACTIVE',
-      phoneNumber: '+59178901234',
+      phoneNumber: '+59170000000',
     },
   });
 
   const org1 = await prisma.organization.create({
     data: {
       createdByUserId: orgUser1.id,
-      name: 'Cruz Roja Boliviana',
-      description: 'Organización humanitaria internacional',
-      sector: 'Healthcare',
-      contactEmail: orgUser1.email,
-      contactPhone: orgUser1.phoneNumber,
-      headquartersLocation: 'La Paz, Bolivia',
-      coverageAreas: ['La Paz', 'Cochabamba', 'Santa Cruz'],
+      name: 'Organización de Prueba',
+      description: 'Organización para pruebas y desarrollo',
+      sector: 'Humanitarian',
+      contactEmail: 'admin@admin.com',
+      contactPhone: '+59170000000',
+      headquartersLocation: 'Santa Cruz, Bolivia',
+      coverageAreas: ['Santa Cruz', 'La Paz', 'Cochabamba'],
     },
   });
 
@@ -108,53 +117,47 @@ async function main() {
     },
   });
 
+  // Crear suscripción
+  await prisma.subscription.create({
+    data: {
+      organizationId: org1.id,
+      plan: 'PROFESSIONAL',
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    },
+  });
+
   console.log(`   ✅ Organización creada: ${org1.name}\n`);
 
-  // 4. Crear voluntarios
-  console.log('4️⃣ Creando voluntarios...');
+  // 4. Crear voluntarios (10 voluntarios)
+  console.log('4️⃣ Creando 10 voluntarios...');
   
   const volunteers = [];
   const volunteerData = [
-    {
-      fullName: 'Juan Pérez',
-      email: 'juan.perez@example.com',
-      skills: ['first-aid', 'communication', 'logistics'],
-      certifications: ['CPR', 'First Aid'],
-      level: 'PLATA',
-      totalPoints: 1500,
-      reputationScore: 85,
-    },
-    {
-      fullName: 'Ana López',
-      email: 'ana.lopez@example.com',
-      skills: ['medical', 'psychology', 'communication'],
-      certifications: ['Nursing', 'Psychological First Aid'],
-      level: 'ORO',
-      totalPoints: 3000,
-      reputationScore: 92,
-    },
-    {
-      fullName: 'Carlos Mamani',
-      email: 'carlos.mamani@example.com',
-      skills: ['construction', 'logistics', 'coordination'],
-      certifications: ['Construction Safety'],
-      level: 'BRONCE',
-      totalPoints: 500,
-      reputationScore: 75,
-    },
+    { fullName: 'Juan Pérez', email: 'juan.perez@test.com', skills: ['first-aid', 'communication'], level: 'PLATA', totalPoints: 1500, reputationScore: 85 },
+    { fullName: 'Ana López', email: 'ana.lopez@test.com', skills: ['medical', 'psychology'], level: 'ORO', totalPoints: 3000, reputationScore: 92 },
+    { fullName: 'Carlos Mamani', email: 'carlos.mamani@test.com', skills: ['construction', 'logistics'], level: 'BRONCE', totalPoints: 500, reputationScore: 75 },
+    { fullName: 'María Fernández', email: 'maria.fernandez@test.com', skills: ['communication', 'logistics'], level: 'PLATA', totalPoints: 1800, reputationScore: 88 },
+    { fullName: 'Luis Quispe', email: 'luis.quispe@test.com', skills: ['medical', 'first-aid'], level: 'ORO', totalPoints: 2500, reputationScore: 90 },
+    { fullName: 'Sofia Morales', email: 'sofia.morales@test.com', skills: ['psychology', 'communication'], level: 'PLATA', totalPoints: 1200, reputationScore: 82 },
+    { fullName: 'Roberto Vargas', email: 'roberto.vargas@test.com', skills: ['construction', 'coordination'], level: 'BRONCE', totalPoints: 800, reputationScore: 78 },
+    { fullName: 'Laura Gutierrez', email: 'laura.gutierrez@test.com', skills: ['medical', 'nursing'], level: 'ORO', totalPoints: 2800, reputationScore: 95 },
+    { fullName: 'Diego Rojas', email: 'diego.rojas@test.com', skills: ['logistics', 'coordination'], level: 'PLATA', totalPoints: 1600, reputationScore: 86 },
+    { fullName: 'Carmen Suarez', email: 'carmen.suarez@test.com', skills: ['communication', 'first-aid'], level: 'BRONCE', totalPoints: 600, reputationScore: 72 },
   ];
 
   for (const data of volunteerData) {
-    const user = await prisma.user.create({
-      data: {
-        fullName: data.fullName,
-        email: data.email,
-        passwordHash: await bcrypt.hash('Password123!', 10),
-        role: 'VOLUNTEER',
-        status: 'ACTIVE',
-        phoneNumber: '+59178900000',
-      },
-    });
+      const user = await prisma.user.create({
+        data: {
+          fullName: data.fullName,
+          email: data.email,
+          passwordHash: await bcrypt.hash('12345678', 10),
+          role: 'VOLUNTEER',
+          status: 'ACTIVE',
+          phoneNumber: `+5917${Math.floor(Math.random() * 10000000).toString().padStart(8, '0')}`,
+        },
+      });
 
     const profile = await prisma.volunteerProfile.create({
       data: {
@@ -236,19 +239,14 @@ async function main() {
 
   console.log('✅ ¡Seed completado exitosamente!\n');
   console.log('📊 Credenciales de prueba:');
-  console.log('   Admin:');
-  console.log('     Email: admin@volunteerplatform.org');
-  console.log('     Password: Admin123!');
-  console.log('');
   console.log('   Organización:');
-  console.log('     Email: maria@cruzroja.org');
-  console.log('     Password: Password123!');
+  console.log('     Email: admin@admin.com');
+  console.log('     Password: 12345678');
   console.log('');
-  console.log('   Voluntarios:');
-  volunteerData.forEach((v) => {
-    console.log(`     Email: ${v.email}`);
+  console.log('   Voluntarios (10):');
+  volunteerData.forEach((v, i) => {
+    console.log(`     ${i + 1}. ${v.email} / 12345678`);
   });
-  console.log('     Password: Password123! (para todos)');
   console.log('');
 }
 

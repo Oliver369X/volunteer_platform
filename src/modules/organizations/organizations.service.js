@@ -84,35 +84,53 @@ const getOrganizationDetails = async (organizationId, requester) => {
 const addMember = async (organizationId, payload, requester) => {
   const prisma = getPrisma();
 
+  console.log('[addMember] Iniciando - OrgID:', organizationId, 'Payload:', payload);
+
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
   });
   if (!organization) {
+    console.log('[addMember] Organización no encontrada');
     throw new NotFoundError('Organización no encontrada');
   }
 
   const membership = await ensureMembership(prisma, organizationId, requester.id);
+  console.log('[addMember] Membership:', membership);
   if (!membership || !['OWNER', 'COORDINATOR'].includes(membership.role)) {
     throw new AuthorizationError('No tienes permisos para gestionar miembros');
   }
 
-  const user = await prisma.user.findFirst({ where: { email: payload.email } });
+  // Buscar usuario por email
+  const user = await prisma.user.findFirst({ 
+    where: { 
+      email: payload.email.toLowerCase().trim()
+    } 
+  });
+  console.log('[addMember] Buscando usuario:', payload.email);
+  console.log('[addMember] Usuario encontrado:', user ? `${user.email} (${user.id})` : 'NO ENCONTRADO');
+  
   if (!user) {
-    throw new NotFoundError('Usuario no encontrado para agregar como miembro');
+    throw new NotFoundError(
+      `❌ El usuario con email "${payload.email}" no está registrado en la plataforma.\n\n` +
+      `📝 Para agregar este usuario al equipo:\n` +
+      `1. El usuario debe registrarse primero en la plataforma\n` +
+      `2. Luego puedes agregarlo usando su email`
+    );
   }
 
   const existing = await prisma.organizationMember.findFirst({
     where: { organizationId, userId: user.id },
   });
   if (existing) {
-    throw new ValidationError('El usuario ya es miembro de la organización');
+    const roleName = existing.role === 'OWNER' ? 'propietario' : existing.role === 'COORDINATOR' ? 'coordinador' : 'analista';
+    throw new ValidationError(`El usuario ya es miembro de la organización (rol: ${roleName}). Usa un email diferente.`);
   }
 
   const newMember = await prisma.organizationMember.create({
     data: {
       organizationId,
       userId: user.id,
-      role: payload.role,
+      role: payload.role || 'COORDINATOR',
     },
     include: {
       user: {
@@ -125,6 +143,7 @@ const addMember = async (organizationId, payload, requester) => {
     },
   });
 
+  console.log('[addMember] Miembro agregado exitosamente');
   return {
     id: newMember.id,
     organizationId,

@@ -18,7 +18,9 @@
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
     "db:seed:complete": "node prisma/seed-complete.js",
-    "seed": "node prisma/seed.js"
+    "db:seed:prod": "node prisma/seed-production.js",
+    "seed": "node prisma/seed.js",
+    "seed:prod": "node prisma/seed-production.js"
   },
   "keywords": [
     "voluntariado",
